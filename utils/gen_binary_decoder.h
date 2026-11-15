@@ -84,6 +84,14 @@ class GenBinaryDecoder {
         return IGA_XE_HPG;
       case 0x0c08:  // GFXCORE_FAMILY::IGFX_XE_HPC_CORE:
         return IGA_XE_HPC;
+      // IGA_XE2 / IGA_XE3 are spelled as XE_VER() values: older system iga.h
+      // headers don't have these enumerators but do have the macro.
+      case 0x0c09:  // GFXCORE_FAMILY::IGFX_XE2_LPG_CORE (= IGFX_XE2_HPG_CORE): LNL, BMG
+        return static_cast<iga_gen_t>(XE_VER(2, 0));  // IGA_XE2
+      case 0x1e00:  // GFXCORE_FAMILY::IGFX_XE3_CORE: PTL
+        return static_cast<iga_gen_t>(XE_VER(3, 0));  // IGA_XE3
+      // IGFX_XE3P_CORE (0x2300) is left out: IGA only has the XPC variant of it
+      // (IGA_XE3P_XPC), and other Xe3P parts may need another IGA platform.
       default:
         return IGA_GEN_INVALID;
     }
