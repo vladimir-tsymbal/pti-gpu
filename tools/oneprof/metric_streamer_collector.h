@@ -235,7 +235,10 @@ class MetricStreamerCollector {
         return;
       }
 
-      PTI_ASSERT(metric_streamer_desc.notifyEveryNReports == MAX_REPORT_COUNT);
+      // notifyEveryNReports is in/out: the driver may lower it to what its
+      // OA buffer holds (xe does), so the event just fires more often.
+      PTI_ASSERT(metric_streamer_desc.notifyEveryNReports > 0 &&
+                 metric_streamer_desc.notifyEveryNReports <= MAX_REPORT_COUNT);
       metric_streamer_list.push_back(metric_streamer);
     }
 
