@@ -1,0 +1,187 @@
+//==============================================================
+// Copyright (C) Intel Corporation
+//
+// SPDX-License-Identifier: MIT
+// =============================================================
+
+#ifndef PTI_UTILS_ZE_TRACING_EXT_H_
+#define PTI_UTILS_ZE_TRACING_EXT_H_
+
+// Tracing of Level Zero APIs that are newer than zet_core_callbacks_t.
+//
+// zelTracerSetPrologues()/zelTracerSetEpilogues() only cover the APIs of the
+// 1.0 callback tables. Newer APIs need the per-API registration functions of
+// the loader tracing layer. One of them matters for kernel collection:
+// zeCommandListAppendLaunchKernelWithArguments (L0 1.14), which the SYCL
+// runtime's Level Zero v2 adapter uses for every kernel launch (the default
+// on Xe2 GPUs such as BMG and LNL).
+//
+// Older loaders (e.g. 1.24) don't export the registration function, so it is
+// looked up at run time: the tools still load there, and runtimes can't use
+// the API through those loaders anyway.
+
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
+#include <level_zero/layers/zel_tracing_api.h>
+#include <level_zero/layers/zel_tracing_register_cb.h>
+
+#include "pti_assert.h"
+
+// zeCommandListAppendLaunchKernelWithArguments and its tracing types come
+// with the L0 1.14 headers. With older system headers (e.g. libze-dev 1.24,
+// API 1.13) the collectors build without the hook.
+#if defined(ZE_API_VERSION_CURRENT_M) && \
+    ZE_API_VERSION_CURRENT_M >= ZE_MAKE_VERSION(1, 14)
+#define PTI_ZE_LAUNCH_WITH_ARGUMENTS 1
+#endif
+
+namespace utils {
+namespace ze {
+
+inline void* GetLoaderSymbol(const char* name) {
+#if defined(_WIN32)
+  HMODULE loader = GetModuleHandleA("ze_loader.dll");
+  if (loader == nullptr) {
+    return nullptr;
+  }
+  return reinterpret_cast<void*>(GetProcAddress(loader, name));
+#else
+  return dlsym(RTLD_DEFAULT, name);
+#endif
+}
+
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+// Registers the prologue and epilogue (either may be null) for
+// zeCommandListAppendLaunchKernelWithArguments. Call it after
+// zelTracerSetPrologues/Epilogues() and before zelTracerSetEnabled().
+// Returns false if the loader doesn't support it.
+inline bool SetAppendLaunchKernelWithArgumentsCallbacks(
+    zel_tracer_handle_t tracer,
+    ze_pfnCommandListAppendLaunchKernelWithArgumentsCb_t prologue,
+    ze_pfnCommandListAppendLaunchKernelWithArgumentsCb_t epilogue) {
+  PTI_ASSERT(tracer != nullptr);
+  using RegisterFunc = ze_result_t (ZE_APICALL *)(
+      zel_tracer_handle_t, zel_tracer_reg_t,
+      ze_pfnCommandListAppendLaunchKernelWithArgumentsCb_t);
+  RegisterFunc reg = reinterpret_cast<RegisterFunc>(GetLoaderSymbol(
+      "zelTracerCommandListAppendLaunchKernelWithArgumentsRegisterCallback"));
+  if (reg == nullptr) {
+    return false;
+  }
+  if (prologue != nullptr &&
+      reg(tracer, ZEL_REGISTER_PROLOGUE, prologue) != ZE_RESULT_SUCCESS) {
+    return false;
+  }
+  if (epilogue != nullptr &&
+      reg(tracer, ZEL_REGISTER_EPILOGUE, epilogue) != ZE_RESULT_SUCCESS) {
+    return false;
+  }
+  return true;
+}
+
+// Views the arguments of zeCommandListAppendLaunchKernelWithArguments as
+// those of zeCommandListAppendLaunchKernel, so collectors can reuse their
+// handlers. The pointers alias the real arguments: a collector that replaces
+// *phSignalEvent changes the event of the actual call. The group size is
+// passed explicitly by this API (it is not set with zeKernelSetGroupSize);
+// see the group_sizes member.
+struct LaunchKernelWithArgumentsView {
+  explicit LaunchKernelWithArgumentsView(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* p)
+      : group_count(p->pgroupCounts), group_sizes(p->pgroupSizes) {
+    PTI_ASSERT(p != nullptr);
+    params.phCommandList = p->phCommandList;
+    params.phKernel = p->phKernel;
+    params.ppLaunchFuncArgs = &group_count;
+    params.phSignalEvent = p->phSignalEvent;
+    params.pnumWaitEvents = p->pnumWaitEvents;
+    params.pphWaitEvents = p->pphWaitEvents;
+  }
+
+  // params points into this object.
+  LaunchKernelWithArgumentsView(const LaunchKernelWithArgumentsView&) = delete;
+  LaunchKernelWithArgumentsView& operator=(
+      const LaunchKernelWithArgumentsView&) = delete;
+
+  const ze_group_count_t* group_count;
+  const ze_group_size_t* group_sizes;
+  ze_command_list_append_launch_kernel_params_t params{};
+};
+
+#endif // PTI_ZE_LAUNCH_WITH_ARGUMENTS
+
+// True if kernel timestamps can be queried from the event. Counter-based
+// events (no pool, or an internal one) usually don't have them.
+inline bool EventHasKernelTimestamps(ze_event_handle_t event) {
+  PTI_ASSERT(event != nullptr);
+  ze_event_pool_handle_t pool = nullptr;
+  if (zeEventGetEventPool(event, &pool) != ZE_RESULT_SUCCESS ||
+      pool == nullptr) {
+    return false;
+  }
+  ze_event_pool_flags_t flags = 0;
+  if (zeEventPoolGetFlags(pool, &flags) != ZE_RESULT_SUCCESS) {
+    return false;
+  }
+  return (flags & (ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP |
+                   ZE_EVENT_POOL_FLAG_KERNEL_MAPPED_TIMESTAMP)) != 0;
+}
+
+// Kernel collectors time a kernel with its signal event: their own event if
+// the application passes none, or the application's event, whose pool they
+// made timestamp-capable in zeEventPoolCreate. The Level Zero v2 adapter of
+// the SYCL runtime instead passes counter-based events without timestamps
+// (and reuses one per queue), created through an extension that is not
+// traced. For those, the collector gets a null signal event in the prologue,
+// so it uses its own timestamp event, and the epilogue appends a barrier
+// that signals the application's event once the kernel is done.
+//
+// The prologue and epilogue of a call run on the same thread, so the hidden
+// event is kept per thread; Tag (the collector class) keeps the state of
+// different collectors apart.
+template <typename Tag>
+class UntimedSignalEventSwap {
+ public:
+  static void OnEnter(ze_event_handle_t* signal_event) {
+    PTI_ASSERT(signal_event != nullptr);
+    Hidden() = nullptr;
+    if (*signal_event != nullptr &&
+        !EventHasKernelTimestamps(*signal_event)) {
+      Hidden() = *signal_event;
+      *signal_event = nullptr;
+    }
+  }
+
+  // Call after the collector's epilogue, which still sees its own event.
+  static void OnExit(ze_command_list_handle_t command_list,
+                     ze_event_handle_t* signal_event, ze_result_t result) {
+    PTI_ASSERT(signal_event != nullptr);
+    ze_event_handle_t app_event = Hidden();
+    Hidden() = nullptr;
+    if (app_event == nullptr) {
+      return;
+    }
+    ze_event_handle_t own_event = *signal_event;
+    if (result == ZE_RESULT_SUCCESS && own_event != nullptr) {
+      ze_result_t status = zeCommandListAppendBarrier(
+          command_list, app_event, 1, &own_event);
+      PTI_ASSERT(status == ZE_RESULT_SUCCESS);
+    }
+    *signal_event = app_event;
+  }
+
+ private:
+  static ze_event_handle_t& Hidden() {
+    static thread_local ze_event_handle_t event = nullptr;
+    return event;
+  }
+};
+
+} // namespace ze
+} // namespace utils
+
+#endif // PTI_UTILS_ZE_TRACING_EXT_H_

@@ -23,6 +23,7 @@
 #include "correlator.h"
 #include "utils.h"
 #include "ze_event_cache.h"
+#include "ze_tracing_ext.h"
 #include "ze_utils.h"
 
 struct ZeSyncPoint {
@@ -531,6 +532,11 @@ class ZeKernelCollector {
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
     status = zelTracerSetEpilogues(tracer_, &epilogue_callbacks);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+    utils::ze::SetAppendLaunchKernelWithArgumentsCallbacks(
+        tracer_, OnEnterCommandListAppendLaunchKernelWithArguments,
+        OnExitCommandListAppendLaunchKernelWithArguments);
+#endif
     status = zelTracerSetEnabled(tracer_, true);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
   }
@@ -1504,6 +1510,46 @@ class ZeKernelCollector {
     props.bytes_transferred = bytes_transferred;
     return props;
   }
+
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+  // zeCommandListAppendLaunchKernelWithArguments (see ze_tracing_ext.h):
+  // like zeCommandListAppendLaunchKernel, but the group size comes with the
+  // call instead of zeKernelSetGroupSize().
+  static void OnEnterCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    ZeKernelCollector* collector =
+      reinterpret_cast<ZeKernelCollector*>(global_data);
+    PTI_ASSERT(collector != nullptr);
+
+    utils::ze::UntimedSignalEventSwap<ZeKernelCollector>::OnEnter(
+        params->phSignalEvent);
+
+    ZeKernelProps props = GetKernelProps(
+        collector, *(params->phKernel), params->pgroupCounts);
+    if (params->pgroupSizes != nullptr) {
+      props.group_size[0] = params->pgroupSizes->groupSizeX;
+      props.group_size[1] = params->pgroupSizes->groupSizeY;
+      props.group_size[2] = params->pgroupSizes->groupSizeZ;
+    }
+
+    OnEnterKernelAppend(
+        collector, props,
+        *(params->phSignalEvent),
+        *(params->phCommandList),
+        instance_data);
+  }
+
+  static void OnExitCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    PTI_ASSERT(*(params->phSignalEvent) != nullptr);
+    OnExitKernelAppend(*params->phCommandList, global_data,
+                       instance_data, result);
+    utils::ze::UntimedSignalEventSwap<ZeKernelCollector>::OnExit(
+        *(params->phCommandList), params->phSignalEvent, result);
+  }
+#endif // PTI_ZE_LAUNCH_WITH_ARGUMENTS
 
   static void OnEnterCommandListAppendLaunchKernel(
       ze_command_list_append_launch_kernel_params_t* params,
