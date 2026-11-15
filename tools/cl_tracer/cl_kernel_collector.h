@@ -627,20 +627,19 @@ class ClKernelCollector {
     elapsed = cl_device_timestamp - started;
     elapsed += (ze_host_timestamp - cl_host_timestamp);
 
-    uint64_t ze_started;
-    uint64_t ze_ended;
+    // Work in timer ticks and convert to ns at the end: a 63/64-bit device
+    // timestamp (e.g. BMG) times ns-per-cycle overflows, and an integer
+    // ns-per-cycle (52 for 19.2 MHz) also skews the result.
+    uint64_t ze_started_ticks =
+      (ze_device_timestamp - utils::NsToTicks(elapsed, freq)) & mask;
+    uint64_t ze_ended_ticks =
+      (ze_started_ticks + utils::NsToTicks(ended - started, freq)) & mask;
 
-    uint64_t ns_per_cycle;
-    ns_per_cycle = static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-
-    ze_started = (ze_device_timestamp - (elapsed / ns_per_cycle)) & mask;
-    ze_ended = (ze_started + ((ended - started) / ns_per_cycle)) & mask;;
-
-    ze_started = ze_started * ns_per_cycle;
-    ze_ended = ze_ended * ns_per_cycle;
+    uint64_t ze_started = utils::TicksToNs(ze_started_ticks, freq);
+    uint64_t ze_ended = utils::TicksToNs(ze_ended_ticks, freq);
 
     if (ze_ended < ze_started) {
-      ze_ended += ((mask + 1)* ns_per_cycle);
+      ze_ended += utils::TimerWrapNs(mask, freq);
     }
 
 #if 0

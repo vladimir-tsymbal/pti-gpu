@@ -108,11 +108,15 @@ static KernelMap GetKernelMap() {
   PTI_ASSERT(metric_device != nullptr);
   uint64_t freq = utils::ze::GetMetricTimerFrequency(metric_device);
   PTI_ASSERT(freq > 0);
-  uint64_t metric_span = (utils::ze::GetMetricTimestampMask(metric_device) +
-    1ull) * NSEC_IN_SEC / freq;
-  uint64_t kernel_span = (utils::ze::GetDeviceTimestampMask(metric_device) +
-    1ull) * NSEC_IN_SEC / freq;
-  PTI_ASSERT(metric_span > 0 && kernel_span >= metric_span);
+  // A span of 0 means the timer never wraps in practice (63/64 valid bits,
+  // e.g. BMG).
+  uint64_t metric_span = utils::TimerWrapNs(
+      utils::ze::GetMetricTimestampMask(metric_device), freq);
+  uint64_t kernel_span = utils::TimerWrapNs(
+      utils::ze::GetDeviceTimestampMask(metric_device), freq);
+  // The kernel timer must not wrap earlier than the metric timer.
+  PTI_ASSERT(kernel_span == 0 ||
+             (metric_span > 0 && kernel_span >= metric_span));
 
   std::vector<uint64_t> report_time(report_count);
   uint64_t wrap_shift = 0;
@@ -120,8 +124,10 @@ static KernelMap GetKernelMap() {
     const zet_typed_value_t& ts =
       report_list[i * report_size + gpu_timestamp_id];
     PTI_ASSERT(ts.type == ZET_VALUE_TYPE_UINT64);
-    uint64_t t = ts.value.ui64 % metric_span;
-    if (i > 0 && t + wrap_shift + metric_span / 2 < report_time[i - 1]) {
+    uint64_t t = (metric_span > 0) ? ts.value.ui64 % metric_span :
+      ts.value.ui64;
+    if (metric_span > 0 && i > 0 &&
+        t + wrap_shift + metric_span / 2 < report_time[i - 1]) {
       wrap_shift += metric_span;  // the metric timer wrapped
     }
     report_time[i] = t + wrap_shift;
@@ -134,8 +140,9 @@ static KernelMap GetKernelMap() {
   // unwrapped the same way as the reports (kernels are listed in order).
   const uint64_t kSlack = 1000000;  // 1 ms in ns
   const ZeKernelInterval& first_kernel = kernel_interval_list.front();
-  uint64_t first_start = first_kernel.start % metric_span;
-  while (first_start + kSlack < report_time[0]) {
+  uint64_t first_start = (metric_span > 0) ?
+    first_kernel.start % metric_span : first_kernel.start;
+  while (metric_span > 0 && first_start + kSlack < report_time[0]) {
     first_start += metric_span;
   }
   uint64_t kernel_shift = 0;
@@ -145,7 +152,7 @@ static KernelMap GetKernelMap() {
     uint32_t sample_count = 0;
     float eu_active = 0.0f, eu_stall = 0.0f;
 
-    if (kernel.start + kernel_span / 2 < prev_kernel_start) {
+    if (kernel_span > 0 && kernel.start + kernel_span / 2 < prev_kernel_start) {
       kernel_shift += kernel_span;  // the kernel timer wrapped
     }
     prev_kernel_start = kernel.start;

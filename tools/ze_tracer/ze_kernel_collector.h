@@ -628,15 +628,8 @@ class ZeKernelCollector {
 
   uint64_t ComputeDuration(
       uint64_t start, uint64_t end, uint64_t freq, uint64_t mask) {
-    uint64_t duration = 0;
-    if (start < end) {
-      duration = (end - start) *
-        static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-    } else { // Timer Overflow
-      duration = ((mask + 1ull) + end - start) *
-        static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-    }
-    return duration;
+    // Unsigned subtraction masked to the valid bits covers a timer wrap.
+    return utils::TicksToNs((end - start) & mask, freq);
   }
 
 #ifdef PTI_KERNEL_INTERVALS
@@ -654,16 +647,16 @@ class ZeKernelCollector {
     PTI_ASSERT(base_sync.host_sync < target_sync.host_sync);
     uint64_t duration = target_sync.host_sync - base_sync.host_sync;
 
-    uint64_t base_time = base_sync.device_sync *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t base_time = utils::TicksToNs(base_sync.device_sync, freq);
     uint64_t target_time = base_time + duration;
 
-    uint64_t max_time = (mask + 1ull) *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t max_time = utils::TimerWrapNs(mask, freq);
+    if (max_time == 0) {
+      return 0;  // the timer doesn't wrap
+    }
 
     uint64_t shift = 0;
-    uint64_t metric_time = target_sync.device_sync *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t metric_time = utils::TicksToNs(target_sync.device_sync, freq);
     while (metric_time + shift + max_time < target_time) {
       shift += max_time;
     }
@@ -702,8 +695,7 @@ class ZeKernelCollector {
         submit_sync.device_sync, start, freq, mask);
     uint64_t duration = ComputeDuration(start, end, freq, mask);
 
-    uint64_t metric_sync = submit_sync.device_sync *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t metric_sync = utils::TicksToNs(submit_sync.device_sync, freq);
     metric_sync += ProcessTimerOverflow(base_sync, submit_sync, mask, freq);
     metric_start = metric_sync + time_shift;
     metric_end = metric_start + duration;
