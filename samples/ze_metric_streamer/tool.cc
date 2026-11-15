@@ -5,6 +5,7 @@
 // =============================================================
 
 
+#include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <set>
@@ -42,6 +43,7 @@ const uint32_t kPercentLength = 16;
 
 static ZeKernelCollector* kernel_collector = nullptr;
 static ZeMetricCollector* metric_collector = nullptr;
+static ze_device_handle_t metric_device = nullptr;
 
 static std::chrono::steady_clock::time_point start;
 
@@ -95,29 +97,74 @@ static KernelMap GetKernelMap() {
 
   uint32_t report_size = metric_collector->GetReportSize();
   PTI_ASSERT(report_size > 0);
+  size_t report_count = report_list.size() / report_size;
+
+  // Kernel intervals come from the kernel timestamp counter
+  // (kernelTimestampValidBits, e.g. 32 bits on PVC), while QueryBeginTime
+  // comes from the metric timer, which keeps fewer valid bits (31 on PVC) and
+  // so wraps earlier. Both run at the same frequency. Move the kernel
+  // intervals into the metric time domain, and unwrap both sides so that
+  // runs that cross a metric timer wrap still match.
+  PTI_ASSERT(metric_device != nullptr);
+  uint64_t freq = utils::ze::GetMetricTimerFrequency(metric_device);
+  PTI_ASSERT(freq > 0);
+  uint64_t metric_span = (utils::ze::GetMetricTimestampMask(metric_device) +
+    1ull) * NSEC_IN_SEC / freq;
+  uint64_t kernel_span = (utils::ze::GetDeviceTimestampMask(metric_device) +
+    1ull) * NSEC_IN_SEC / freq;
+  PTI_ASSERT(metric_span > 0 && kernel_span >= metric_span);
+
+  std::vector<uint64_t> report_time(report_count);
+  uint64_t wrap_shift = 0;
+  for (size_t i = 0; i < report_count; ++i) {
+    const zet_typed_value_t& ts =
+      report_list[i * report_size + gpu_timestamp_id];
+    PTI_ASSERT(ts.type == ZET_VALUE_TYPE_UINT64);
+    uint64_t t = ts.value.ui64 % metric_span;
+    if (i > 0 && t + wrap_shift + metric_span / 2 < report_time[i - 1]) {
+      wrap_shift += metric_span;  // the metric timer wrapped
+    }
+    report_time[i] = t + wrap_shift;
+  }
+
+  // Anchor the first kernel to the first report: kernels start after the
+  // streamer is open, so its metric time is at or after the first report,
+  // allowing for one sampling period of slack. Later kernels keep their
+  // distance from the first kernel, measured with the kernel timer, which is
+  // unwrapped the same way as the reports (kernels are listed in order).
+  const uint64_t kSlack = 1000000;  // 1 ms in ns
+  const ZeKernelInterval& first_kernel = kernel_interval_list.front();
+  uint64_t first_start = first_kernel.start % metric_span;
+  while (first_start + kSlack < report_time[0]) {
+    first_start += metric_span;
+  }
+  uint64_t kernel_shift = 0;
+  uint64_t prev_kernel_start = first_kernel.start;
 
   for (auto& kernel : kernel_interval_list) {
     uint32_t sample_count = 0;
     float eu_active = 0.0f, eu_stall = 0.0f;
 
-    const zet_typed_value_t* report = report_list.data();
-    while (report < report_list.data() + report_list.size()) {
-      PTI_ASSERT(report[gpu_timestamp_id].type == ZET_VALUE_TYPE_UINT64);
-      uint64_t report_timestamp = report[gpu_timestamp_id].value.ui64;
+    if (kernel.start + kernel_span / 2 < prev_kernel_start) {
+      kernel_shift += kernel_span;  // the kernel timer wrapped
+    }
+    prev_kernel_start = kernel.start;
+    uint64_t kernel_time = kernel.start + kernel_shift;
+    uint64_t kernel_start = (kernel_time >= first_kernel.start) ?
+      first_start + (kernel_time - first_kernel.start) :
+      first_start - std::min(first_start, first_kernel.start - kernel_time);
+    uint64_t kernel_end = kernel_start + (kernel.end - kernel.start);
 
-      if (report_timestamp >= kernel.start && report_timestamp <= kernel.end) {
-        PTI_ASSERT(report[eu_active_id].type == ZET_VALUE_TYPE_FLOAT32);
-        eu_active += report[eu_active_id].value.fp32;
-        PTI_ASSERT(report[eu_stall_id].type == ZET_VALUE_TYPE_FLOAT32);
-        eu_stall += report[eu_stall_id].value.fp32;
-        ++sample_count;
-      }
-
-      if (report_timestamp > kernel.end) {
-        break;
-      }
-
-      report += report_size;
+    // report_time is sorted, so jump to the first report inside the kernel.
+    size_t i = std::lower_bound(report_time.begin(), report_time.end(),
+                                kernel_start) - report_time.begin();
+    for (; i < report_count && report_time[i] <= kernel_end; ++i) {
+      const zet_typed_value_t* report = report_list.data() + i * report_size;
+      PTI_ASSERT(report[eu_active_id].type == ZET_VALUE_TYPE_FLOAT32);
+      eu_active += report[eu_active_id].value.fp32;
+      PTI_ASSERT(report[eu_stall_id].type == ZET_VALUE_TYPE_FLOAT32);
+      eu_stall += report[eu_stall_id].value.fp32;
+      ++sample_count;
     }
 
     if (sample_count > 0) {
@@ -245,6 +292,7 @@ void EnableProfiling() {
     kernel_collector = nullptr;
     return;
   }
+  metric_device = device;
 
   start = std::chrono::steady_clock::now();
 }

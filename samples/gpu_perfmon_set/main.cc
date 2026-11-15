@@ -84,13 +84,13 @@ std::string ConfigureRegisters(int fd, unsigned reg_value, int& config_id) {
   return guid;
 }
 
-int OpenPerfStream(int fd, int config_id) {
+int OpenPerfStream(int fd, int config_id, uint64_t format) {
   PTI_ASSERT(config_id >= 0);
   uint64_t properties[] = {
     DRM_I915_PERF_PROP_SAMPLE_OA, 1,
     DRM_I915_PERF_PROP_OA_METRICS_SET, static_cast<uint64_t>(config_id),
-    DRM_I915_PERF_PROP_OA_FORMAT, I915_OA_FORMAT_A32u40_A4u32_B8_C8 };
-  
+    DRM_I915_PERF_PROP_OA_FORMAT, format };
+
   struct drm_i915_perf_open_param param = { 0, };
   param.flags = 0;
   param.flags |= I915_PERF_FLAG_FD_CLOEXEC;
@@ -193,7 +193,15 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  int stream_fd = OpenPerfStream(fd, config_id);
+  // Gen12 (TGL/DG1/ADL) uses the A32u40_A4u32_B8_C8 OA report format. Xe-HP
+  // and newer (DG2, PVC, MTL) don't support it for the OA unit and need
+  // A24u40_A14u32_B8_C8, so i915 rejects the first one with EINVAL there.
+  int stream_fd = OpenPerfStream(fd, config_id,
+                                 I915_OA_FORMAT_A32u40_A4u32_B8_C8);
+  if (stream_fd == -1 && errno == EINVAL) {
+    stream_fd = OpenPerfStream(fd, config_id,
+                               I915_OA_FORMAT_A24u40_A14u32_B8_C8);
+  }
   if (stream_fd == -1) {
     std::cout << "Opening i915 perf stream is failed (" <<
       errno << ": " << strerror(errno) << ")" << std::endl;

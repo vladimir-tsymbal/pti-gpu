@@ -60,6 +60,9 @@ def run(path, option):
     return "stderr is empty"
   if stdout.find(" CORRECT") == -1:
     return stdout
+  # The per-kernel average hides instances without samples, so check for them.
+  if stderr.find("No samples found") != -1:
+    return stderr
   if not parse(stderr):
     return stderr
   return None
