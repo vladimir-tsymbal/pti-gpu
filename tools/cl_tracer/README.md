@@ -1,9 +1,3 @@
-# ⛔️ DEPRECATED: This project is no longer maintained
-
-> **Warning**: This repository is obsolete. We will not be providing updates or support.
-
-Please use [unitrace](../unitrace) instead. Unitrace has support of all the options. Report in case of any issue found. We will be happy to help.
-
 # OpenCL(TM) Tracer
 ## Overview
 This tool is an analogue of [Intercept Layer for OpenCL(TM) Applications](https://github.com/intel/opencl-intercept-layer) designed based on internal [tracing mechanism](../../chapters/runtime_api_tracing/OpenCL.md) implemented in Intel runtimes for OpenCL(TM).
@@ -143,7 +137,7 @@ All the API calls and kernels, which submission happens while collection disable
 - Windows
 
 ## Prerequisites
-- [CMake](https://cmake.org/) (version 3.12 and above)
+- [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
 - [Python](https://www.python.org/) (version 2.7 and above)
 - [OpenCL(TM) ICD Loader](https://github.com/KhronosGroup/OpenCL-ICD-Loader)

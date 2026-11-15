@@ -67,15 +67,16 @@ def run(path, option):
     return "stderr is empty"
   if stdout.find(" CORRECT") == -1:
     return stdout
-  if stderr == "gpu" and stderr.find("Target") == -1:
+  if option == "gpu" and stderr.find("Target") == -1:
     return stderr
-  if stderr == "cpu" and stderr.find("Parallel") == -1:
+  if option == "cpu" and stderr.find("Parallel") == -1:
     return stderr
   if not parse(stderr):
     return stderr
   return None
 
 def main(option):
+  utils.require_icpx()
   path = utils.get_sample_build_path("omp_hot_regions")
   log = omp_gemm.main(option)
   if log:

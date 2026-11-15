@@ -1,9 +1,3 @@
-# ⛔️ DEPRECATED: This project is no longer maintained
-
-> **Warning**: This repository is obsolete. We will not be providing updates or support.
-
-Please use [unitrace](../unitrace) instead. Unitrace has support of all the options. Report in case of any issue found. We will be happy to help.
-
 # Tracing and Profiling Tool for Data Parallel C++ (DPC++)
 ## Overview
 This tool provides basic tracing and profiling capabilities for the compute applications based on Intel runtimes for OpenCL(TM) and Level Zero, like DPC++, Intel(R) Implicit SPMD Program Compiler (Intel(R) ISPC) and OpenMP* GPU offload programs.
@@ -159,7 +153,7 @@ All the API calls and kernels, which submission happens while collection disable
 - Windows (*under development*)
 
 ## Prerequisites
-- [CMake](https://cmake.org/) (version 3.12 and above)
+- [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
 - [Python](https://www.python.org/) (version 2.7 and above)
 - [OpenCL(TM) ICD Loader](https://github.com/KhronosGroup/OpenCL-ICD-Loader)

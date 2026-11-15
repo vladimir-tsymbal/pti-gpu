@@ -1,7 +1,7 @@
 set(PTI_CMAKE_MACRO_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "")
 
 macro(SetRequiredCMakeVersion)
-  set(REQUIRED_CMAKE_VERSION 3.12)
+  set(REQUIRED_CMAKE_VERSION 3.22)
 endmacro()
 
 macro(RequirePythonInterp)
@@ -224,8 +224,9 @@ macro(FindIGALibrary TARGET)
         string(REPLACE ":" ";" SEARCH_LIB_PATH $ENV{LD_LIBRARY_PATH})
       endif()
     endif()
+    # Accept the versioned runtime soname when no dev symlink is installed.
     find_library(IGA_LIB_PATH
-      NAMES iga64
+      NAMES iga64 libiga64.so.2 libiga64.so.1
       PATHS ${SEARCH_LIB_PATH})
     if(NOT IGA_LIB_PATH)
       message(FATAL_ERROR
@@ -358,7 +359,7 @@ macro(CheckForMDLibrary TARGET)
       endif()
     endif()
     find_library(MD_LIB_PATH
-      NAMES igdmd md
+      NAMES igdmd md libigdmd.so.1
       PATHS ${SEARCH_LIB_PATH})
     if(NOT MD_LIB_PATH)
       message(WARNING
@@ -389,7 +390,7 @@ macro(CheckForMetricsLibrary)
       endif()
     endif()
     find_library(ML_LIB_PATH
-      NAMES igdml64
+      NAMES igdml64 igdml libigdml.so.1
       PATHS ${SEARCH_LIB_PATH})
   endif()
 
@@ -433,22 +434,59 @@ macro(GetGTPinPackage)
         message(FATAL_ERROR "Graphics Technology Pin (GT Pin) is not supported for the platform")
       endif()
     endif()
+    # Download the archive ourselves instead of letting FetchContent do it:
+    # ExternalProject retries a timed-out download 5 times, and its inactivity
+    # timeout does not cover a stalled TCP connect (e.g. a proxy
+    # misconfiguration), so an unreachable host used to hang configure forever.
+    set(GTPIN_DOWNLOAD_PAGE
+      "https://www.intel.com/content/www/us/en/download/730596/867025/gtpin.html")
+    if(NOT DEFINED GTPIN_DOWNLOAD_TIMEOUT)
+      set(GTPIN_DOWNLOAD_TIMEOUT 900)
+    endif()
+    if(NOT DEFINED GTPIN_DOWNLOAD_INACTIVITY_TIMEOUT)
+      set(GTPIN_DOWNLOAD_INACTIVITY_TIMEOUT 60)
+    endif()
+    if(EXISTS "${GTPIN_LINK}")
+      set(GTPIN_ARCHIVE "${GTPIN_LINK}")
+    else()
+      get_filename_component(GTPIN_ARCHIVE_NAME "${GTPIN_LINK}" NAME)
+      set(GTPIN_ARCHIVE "${CMAKE_BINARY_DIR}/_deps/${GTPIN_ARCHIVE_NAME}")
+    endif()
+    if(NOT EXISTS "${GTPIN_ARCHIVE}")
+      message(STATUS "Downloading GTPin package: ${GTPIN_LINK} "
+        "(timeout ${GTPIN_DOWNLOAD_TIMEOUT} s, inactivity timeout ${GTPIN_DOWNLOAD_INACTIVITY_TIMEOUT} s)")
+      string(RANDOM LENGTH 8 GTPIN_PART_SUFFIX)
+      set(GTPIN_ARCHIVE_PART "${GTPIN_ARCHIVE}.${GTPIN_PART_SUFFIX}.part")
+      file(DOWNLOAD "${GTPIN_LINK}" "${GTPIN_ARCHIVE_PART}"
+        TIMEOUT ${GTPIN_DOWNLOAD_TIMEOUT}
+        INACTIVITY_TIMEOUT ${GTPIN_DOWNLOAD_INACTIVITY_TIMEOUT}
+        STATUS GTPIN_DOWNLOAD_STATUS)
+      list(GET GTPIN_DOWNLOAD_STATUS 0 GTPIN_DOWNLOAD_CODE)
+      if(NOT GTPIN_DOWNLOAD_CODE EQUAL 0)
+        file(REMOVE "${GTPIN_ARCHIVE_PART}")
+        message(FATAL_ERROR
+          "GTPin package download failed: ${GTPIN_LINK} (${GTPIN_DOWNLOAD_STATUS}). "
+          "Check your proxy settings, or download the package manually from "
+          "${GTPIN_DOWNLOAD_PAGE}, unpack it and pass -DGTPIN_PATH=<unpacked dir> "
+          "(or -DGTPIN_LINK=<archive file or url>).")
+      endif()
+      file(RENAME "${GTPIN_ARCHIVE_PART}" "${GTPIN_ARCHIVE}")
+    endif()
     include(FetchContent)
     if(${CMAKE_VERSION} VERSION_LESS "3.24.0")
       FetchContent_Declare(
         gtpin_package
-        URL ${GTPIN_LINK}
-SOURCE_DIR ${GTPIN_SOURCE_DIR}
+        URL ${GTPIN_ARCHIVE}
+        SOURCE_DIR ${GTPIN_SOURCE_DIR}
       )
     else()
       FetchContent_Declare(
         gtpin_package
-        URL ${GTPIN_LINK}
+        URL ${GTPIN_ARCHIVE}
         DOWNLOAD_EXTRACT_TIMESTAMP YES
-SOURCE_DIR ${GTPIN_SOURCE_DIR}
+        SOURCE_DIR ${GTPIN_SOURCE_DIR}
       )
     endif()
-    message(STATUS "Download GTPin package link: ${GTPIN_LINK}")
     FetchContent_MakeAvailable(gtpin_package)
     if(UNIX)
       set(GTPIN_PATH ${gtpin_package_SOURCE_DIR})
@@ -485,6 +523,24 @@ macro(FindGTPinLibrary TARGET)
   target_link_libraries(${TARGET} gtpin ged)
 endmacro()
 
+# Installs the GTPin runtime libraries that TARGET needs into a private
+# lib/<TOOL_NAME> directory (one copy per tool, so separate tool packages do not
+# conflict) and points the installed TARGET at it through RPATH. The GTPin
+# license allows redistribution of the unmodified package, provided its license
+# and third-party notices come with it; they are installed to
+# share/doc/<TOOL_NAME>/gtpin. Linux only; Windows installs are unchanged.
+macro(InstallGTPinRuntime TARGET TOOL_NAME)
+  GetGTPinPackage()
+  if(UNIX)
+    set_target_properties(${TARGET} PROPERTIES
+      INSTALL_RPATH "$ORIGIN/../lib/${TOOL_NAME}")
+    file(GLOB GTPIN_RUNTIME_LIBS "${GTPIN_PATH}/Lib/intel64/*.so*")
+    install(FILES ${GTPIN_RUNTIME_LIBS} DESTINATION lib/${TOOL_NAME})
+    install(DIRECTORY "${GTPIN_PATH}/Licensing/"
+            DESTINATION share/doc/${TOOL_NAME}/gtpin)
+  endif()
+endmacro()
+
 macro(FindGTPinHeaders TARGET)
   GetGTPinPackage()
   target_include_directories(${TARGET}
@@ -512,13 +568,11 @@ macro(GetLevelZeroHeaders TARGET)
                       DEPENDS ${L0_INC_PATH}/level_zero/ze_api.h
                               ${L0_INC_PATH}/level_zero/zes_api.h
                               ${L0_INC_PATH}/level_zero/zet_api.h
-                              ${L0_INC_PATH}/level_zero/zer_api.h
                               ${L0_INC_PATH}/level_zero/layers/zel_tracing_api.h
                               ${L0_INC_PATH}/level_zero/layers/zel_tracing_register_cb.h)
     add_custom_command(OUTPUT ${L0_INC_PATH}/level_zero/ze_api.h
                               ${L0_INC_PATH}/level_zero/zes_api.h
                               ${L0_INC_PATH}/level_zero/zet_api.h
-                              ${L0_INC_PATH}/level_zero/zer_api.h
                               ${L0_INC_PATH}/level_zero/layers/zel_tracing_api.h
                               ${L0_INC_PATH}/level_zero/layers/zel_tracing_register_cb.h
                       COMMAND "${PYTHON_EXECUTABLE}" "${PTI_CMAKE_MACRO_DIR}/get_ze_headers.py" ${L0_INC_PATH} ${CMAKE_BINARY_DIR} ${LEVEL_ZERO_COMMIT_ID})
@@ -643,6 +697,11 @@ macro(FindL0HeadersPath TARGET L0_GEN_SCRIPT)
                     DEPENDS ${L0_GEN_INC_PATH}/tracing.gen)
   add_custom_command(OUTPUT ${L0_GEN_INC_PATH}/tracing.gen
                      COMMAND "${PYTHON_EXECUTABLE}" ${L0_GEN_SCRIPT} ${L0_GEN_INC_PATH} "${L0_INC_PATH}/level_zero")
+  if(TARGET level_zero_headers)
+    # The headers are downloaded at build time (FindL0Headers fallback);
+    # generate the callbacks only after they exist.
+    add_dependencies(ze_gen_headers level_zero_headers)
+  endif()
   target_include_directories(${TARGET}
     PUBLIC "${L0_GEN_INC_PATH}")
   add_dependencies(${TARGET}

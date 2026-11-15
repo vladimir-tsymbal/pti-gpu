@@ -19,7 +19,7 @@ Total execution time: 0.373728 sec
 - Windows
 
 ## Prerequisites
-- [CMake](https://cmake.org/) (version 3.12 and above)
+- [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
 - [Python](https://www.python.org/) (version 2.7 and above)
 - [Intel(R) oneAPI Base Toolkit](https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit.html)
@@ -37,7 +37,7 @@ make
 ```
 Use this command line to run the application:
 ```sh
-./dpc_gemm [cpu|gpu|host] [matrix_size] [repeat_count]
+./dpc_gemm [cpu|gpu] [matrix_size] [repeat_count]
 ```
 ### Windows
 Use Microsoft* Visual Studio x64 command prompt to run the following commands and build the sample (make sure you have oneAPI DPC++ Compiler in `PATH` for building):
@@ -52,5 +52,5 @@ cmake --build . --config Release
 Use this command line to run the application:
 ```sh
 cd Release
-dpc_gemm.exe [cpu|gpu|host] [matrix_size] [repeats_count]
+dpc_gemm.exe [cpu|gpu] [matrix_size] [repeats_count]
 ```

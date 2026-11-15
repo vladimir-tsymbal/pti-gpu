@@ -45,6 +45,7 @@ def run(path, option):
   return None
 
 def main(option):
+  utils.require_icpx()
   path = utils.get_sample_build_path("dpc_gemm")
   log = config(path)
   if log:
@@ -60,8 +61,6 @@ if __name__ == "__main__":
   option = "gpu"
   if len(sys.argv) > 1 and sys.argv[1] == "cpu":
     option = "cpu"
-  if len(sys.argv) > 1 and sys.argv[1] == "host":
-    option = "host"
   log = main(option)
   if log:
     print(log)
