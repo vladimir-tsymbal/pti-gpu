@@ -77,6 +77,36 @@ struct ComparatorPciAddress {
   }
 };
 
+// Converts ticks of a freq Hz timer to ns. The obvious
+// ticks * NSEC_IN_SEC / freq overflows once ticks > ~1.8e10, which a 64-bit
+// GPU timestamp (e.g. BMG, 19.2 MHz) passes after ~16 minutes of uptime.
+inline uint64_t TicksToNs(uint64_t ticks, uint64_t freq) {
+  PTI_ASSERT(freq > 0 && freq <= UINT64_MAX / NSEC_IN_SEC);
+  return (ticks / freq) * NSEC_IN_SEC + (ticks % freq) * NSEC_IN_SEC / freq;
+}
+
+// Converts ns to ticks of a freq Hz timer, for durations (ns < ~1.8e10 * 1e9
+// / freq, i.e. hours) as well as absolute times.
+inline uint64_t NsToTicks(uint64_t ns, uint64_t freq) {
+  PTI_ASSERT(freq > 0 && freq <= UINT64_MAX / NSEC_IN_SEC);
+  return (ns / NSEC_IN_SEC) * freq + (ns % NSEC_IN_SEC) * freq / NSEC_IN_SEC;
+}
+
+// Wrap period in ns of a timer with the given valid-bits mask, or 0 if it
+// never wraps in practice (the period doesn't fit in 64-bit ns, e.g. with
+// 63 or 64 valid bits). Callers must skip their wrap handling for 0.
+inline uint64_t TimerWrapNs(uint64_t mask, uint64_t freq) {
+  PTI_ASSERT(freq > 0);
+  if (mask == UINT64_MAX) {
+    return 0;
+  }
+  uint64_t period = mask + 1ull;
+  if (period / freq >= UINT64_MAX / NSEC_IN_SEC - 1) {
+    return 0;
+  }
+  return TicksToNs(period, freq);
+}
+
 #if defined(__gnu_linux__)
 
 inline uint64_t GetTime(clockid_t id) {

@@ -14,6 +14,12 @@ Press ENTER to deconfigure the driver...
 ```
 To read the collected values for the event one should use binary instrumentation techniques or inline assembly.
 
+The utility works with both Linux kernel GPU drivers and picks the one in use at run time: i915 (i915 perf interface) and xe (xe observation interface, needs kernel headers from Linux 6.11 or newer at build time). Opening the metrics stream needs root, or `perf_stream_paranoid` (i915) / `observation_paranoid` (xe) set to 0:
+```sh
+echo 0 | sudo tee /proc/sys/dev/i915/perf_stream_paranoid  # i915 kernel driver (e.g. PVC)
+echo 0 | sudo tee /proc/sys/dev/xe/observation_paranoid    # xe kernel driver (e.g. BMG)
+```
+
 ## Supported OS
 - Linux
 

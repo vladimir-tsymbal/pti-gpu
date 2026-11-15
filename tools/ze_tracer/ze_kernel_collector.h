@@ -23,6 +23,7 @@
 #include "correlator.h"
 #include "utils.h"
 #include "ze_event_cache.h"
+#include "ze_tracing_ext.h"
 #include "ze_utils.h"
 
 struct ZeSyncPoint {
@@ -288,6 +289,11 @@ class ZeKernelCollector {
     ze_result_t status = zelTracerSetEnabled(tracer_, false);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
 #endif
+
+    // Applications that only use synchronous immediate command lists (e.g.
+    // the OpenMP offload runtime) never synchronize or destroy events, so
+    // collect the kernels that have completed but are still pending.
+    ProcessCalls("DisableTracing");
   }
 
   const ZeKernelInfoMap& GetKernelInfoMap() const {
@@ -526,6 +532,11 @@ class ZeKernelCollector {
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
     status = zelTracerSetEpilogues(tracer_, &epilogue_callbacks);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+    utils::ze::SetAppendLaunchKernelWithArgumentsCallbacks(
+        tracer_, OnEnterCommandListAppendLaunchKernelWithArguments,
+        OnExitCommandListAppendLaunchKernelWithArguments);
+#endif
     status = zelTracerSetEnabled(tracer_, true);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
   }
@@ -628,15 +639,8 @@ class ZeKernelCollector {
 
   uint64_t ComputeDuration(
       uint64_t start, uint64_t end, uint64_t freq, uint64_t mask) {
-    uint64_t duration = 0;
-    if (start < end) {
-      duration = (end - start) *
-        static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-    } else { // Timer Overflow
-      duration = ((mask + 1ull) + end - start) *
-        static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-    }
-    return duration;
+    // Unsigned subtraction masked to the valid bits covers a timer wrap.
+    return utils::TicksToNs((end - start) & mask, freq);
   }
 
 #ifdef PTI_KERNEL_INTERVALS
@@ -654,16 +658,16 @@ class ZeKernelCollector {
     PTI_ASSERT(base_sync.host_sync < target_sync.host_sync);
     uint64_t duration = target_sync.host_sync - base_sync.host_sync;
 
-    uint64_t base_time = base_sync.device_sync *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t base_time = utils::TicksToNs(base_sync.device_sync, freq);
     uint64_t target_time = base_time + duration;
 
-    uint64_t max_time = (mask + 1ull) *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t max_time = utils::TimerWrapNs(mask, freq);
+    if (max_time == 0) {
+      return 0;  // the timer doesn't wrap
+    }
 
     uint64_t shift = 0;
-    uint64_t metric_time = target_sync.device_sync *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t metric_time = utils::TicksToNs(target_sync.device_sync, freq);
     while (metric_time + shift + max_time < target_time) {
       shift += max_time;
     }
@@ -702,8 +706,7 @@ class ZeKernelCollector {
         submit_sync.device_sync, start, freq, mask);
     uint64_t duration = ComputeDuration(start, end, freq, mask);
 
-    uint64_t metric_sync = submit_sync.device_sync *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
+    uint64_t metric_sync = utils::TicksToNs(submit_sync.device_sync, freq);
     metric_sync += ProcessTimerOverflow(base_sync, submit_sync, mask, freq);
     metric_start = metric_sync + time_shift;
     metric_end = metric_start + duration;
@@ -1507,6 +1510,46 @@ class ZeKernelCollector {
     props.bytes_transferred = bytes_transferred;
     return props;
   }
+
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+  // zeCommandListAppendLaunchKernelWithArguments (see ze_tracing_ext.h):
+  // like zeCommandListAppendLaunchKernel, but the group size comes with the
+  // call instead of zeKernelSetGroupSize().
+  static void OnEnterCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    ZeKernelCollector* collector =
+      reinterpret_cast<ZeKernelCollector*>(global_data);
+    PTI_ASSERT(collector != nullptr);
+
+    utils::ze::UntimedSignalEventSwap<ZeKernelCollector>::OnEnter(
+        params->phSignalEvent);
+
+    ZeKernelProps props = GetKernelProps(
+        collector, *(params->phKernel), params->pgroupCounts);
+    if (params->pgroupSizes != nullptr) {
+      props.group_size[0] = params->pgroupSizes->groupSizeX;
+      props.group_size[1] = params->pgroupSizes->groupSizeY;
+      props.group_size[2] = params->pgroupSizes->groupSizeZ;
+    }
+
+    OnEnterKernelAppend(
+        collector, props,
+        *(params->phSignalEvent),
+        *(params->phCommandList),
+        instance_data);
+  }
+
+  static void OnExitCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    PTI_ASSERT(*(params->phSignalEvent) != nullptr);
+    OnExitKernelAppend(*params->phCommandList, global_data,
+                       instance_data, result);
+    utils::ze::UntimedSignalEventSwap<ZeKernelCollector>::OnExit(
+        *(params->phCommandList), params->phSignalEvent, result);
+  }
+#endif // PTI_ZE_LAUNCH_WITH_ARGUMENTS
 
   static void OnEnterCommandListAppendLaunchKernel(
       ze_command_list_append_launch_kernel_params_t* params,

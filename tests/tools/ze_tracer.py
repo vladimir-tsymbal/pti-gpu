@@ -48,7 +48,7 @@ def run(path, option):
     return stdout
   if stderr.find("WARNING") != -1:
     return stderr
-  return None
+  return utils.check_device_timing(command, stderr)
 
 def main(option):
   path = utils.get_tool_build_path("ze_tracer")

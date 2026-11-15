@@ -17,6 +17,7 @@
 #include "metric_query_cache.h"
 #include "ze_event_cache.h"
 #include "ze_utils.h"
+#include "ze_tracing_ext.h"
 
 struct ZeQueryGroupSize {
   uint32_t x;
@@ -184,6 +185,11 @@ class MetricQueryCollector {
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
     status = zelTracerSetEpilogues(tracer_, &epilogue_callbacks);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+    utils::ze::SetAppendLaunchKernelWithArgumentsCallbacks(
+        tracer_, OnEnterCommandListAppendLaunchKernelWithArguments,
+        OnExitCommandListAppendLaunchKernelWithArguments);
+#endif
     status = zelTracerSetEnabled(tracer_, true);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
   }
@@ -360,7 +366,27 @@ class MetricQueryCollector {
     return sstream.str();
   }
 
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
  private:
+  // zeCommandListAppendLaunchKernelWithArguments: same handling as
+  // zeCommandListAppendLaunchKernel (see ze_tracing_ext.h).
+  static void OnEnterCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    utils::ze::LaunchKernelWithArgumentsView view(params);
+    OnEnterCommandListAppendLaunchKernel(
+        &view.params, result, global_data, instance_data);
+  }
+
+  static void OnExitCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    utils::ze::LaunchKernelWithArgumentsView view(params);
+    OnExitCommandListAppendLaunchKernel(
+        &view.params, result, global_data, instance_data);
+  }
+#endif // PTI_ZE_LAUNCH_WITH_ARGUMENTS
+
   static void OnEnterCommandListAppendLaunchKernel(
       ze_command_list_append_launch_kernel_params_t* params,
       ze_result_t result, void* global_data, void** instance_data) {

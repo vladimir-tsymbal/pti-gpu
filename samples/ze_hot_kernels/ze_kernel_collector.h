@@ -17,6 +17,7 @@
 
 #include "utils.h"
 #include "ze_utils.h"
+#include "ze_tracing_ext.h"
 
 struct ZeKernelCommand {
   std::string name;
@@ -24,6 +25,7 @@ struct ZeKernelCommand {
   ze_event_pool_handle_t event_pool;
   ze_event_handle_t event;
   uint64_t timer_frequency;
+  uint64_t timer_mask;
 };
 
 struct ZeKernelInfo {
@@ -210,6 +212,11 @@ class ZeKernelCollector {
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
     status = zelTracerSetEpilogues(tracer_, &epilogue_callbacks);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+    utils::ze::SetAppendLaunchKernelWithArgumentsCallbacks(
+        tracer_, OnEnterCommandListAppendLaunchKernelWithArguments,
+        OnExitCommandListAppendLaunchKernelWithArguments);
+#endif
     status = zelTracerSetEnabled(tracer_, true);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
   }
@@ -281,19 +288,13 @@ class ZeKernelCollector {
     uint64_t freq = call->timer_frequency;
     PTI_ASSERT(freq > 0);
 
-    uint64_t time = 0, start_ns = 0, end_ns = 0;
-
-    start_ns = start *
-      static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-    if (start < end) {
-      end_ns = end *
-        static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-    } else { // 32-bit timer overflow
-      PTI_ASSERT(start < (1ULL << 32));
-      end_ns = ((1ULL << 32) + end) *
-        static_cast<uint64_t>(NSEC_IN_SEC) / freq;
-    }
-    time = end_ns - start_ns;
+    // Unsigned subtraction masked to the valid bits also covers a timer
+    // wrap between start and end (32-bit kernel timestamps on PVC; 64-bit
+    // ones on BMG don't wrap).
+    uint64_t mask = call->timer_mask;
+    uint64_t start_ns = utils::TicksToNs(start & mask, freq);
+    uint64_t time = utils::TicksToNs((end - start) & mask, freq);
+    uint64_t end_ns = start_ns + time;
 
     AddKernelInfo(call->name, time, call->simd_width);
     AddKernelInterval(call->name, start_ns, end_ns);
@@ -540,6 +541,7 @@ class ZeKernelCollector {
     PTI_ASSERT(device != nullptr);
     command->timer_frequency = utils::ze::GetDeviceTimerFrequency(device);
     PTI_ASSERT(command->timer_frequency > 0);
+    command->timer_mask = utils::ze::GetDeviceTimestampMask(device);
 
     if (signal_event == nullptr) {
       ze_context_handle_t context =
@@ -553,6 +555,30 @@ class ZeKernelCollector {
 
     *instance_data = static_cast<void*>(command);
   }
+
+#if defined(PTI_ZE_LAUNCH_WITH_ARGUMENTS)
+  // zeCommandListAppendLaunchKernelWithArguments: same handling as
+  // zeCommandListAppendLaunchKernel (see ze_tracing_ext.h).
+  static void OnEnterCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    utils::ze::LaunchKernelWithArgumentsView view(params);
+    utils::ze::UntimedSignalEventSwap<ZeKernelCollector>::OnEnter(
+        params->phSignalEvent);
+    OnEnterCommandListAppendLaunchKernel(
+        &view.params, result, global_data, instance_data);
+  }
+
+  static void OnExitCommandListAppendLaunchKernelWithArguments(
+      ze_command_list_append_launch_kernel_with_arguments_params_t* params,
+      ze_result_t result, void* global_data, void** instance_data) {
+    utils::ze::LaunchKernelWithArgumentsView view(params);
+    OnExitCommandListAppendLaunchKernel(
+        &view.params, result, global_data, instance_data);
+    utils::ze::UntimedSignalEventSwap<ZeKernelCollector>::OnExit(
+        *(params->phCommandList), params->phSignalEvent, result);
+  }
+#endif // PTI_ZE_LAUNCH_WITH_ARGUMENTS
 
   static void OnEnterCommandListAppendLaunchKernel(
       ze_command_list_append_launch_kernel_params_t* params,

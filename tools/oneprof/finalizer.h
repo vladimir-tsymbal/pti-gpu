@@ -526,8 +526,8 @@ class Finalizer {
       return 0;
     }
 
-    uint64_t max_time = (props.mask + 1ull) *
-        static_cast<uint64_t>(NSEC_IN_SEC) / props.freq;
+    // 0 if the metric timer doesn't wrap (63/64 valid bits, e.g. BMG).
+    uint64_t max_time = utils::TimerWrapNs(props.mask, props.freq);
 
     uint64_t prev_time = base_time, shift = 0;
     for (uint32_t i = 0; i < report_count; ++i) {
@@ -537,7 +537,7 @@ class Finalizer {
       uint64_t time = report[time_id].value.ui64;
       time += shift;
 
-      if (time < prev_time) { // Timer Overflow
+      if (max_time > 0 && time < prev_time) { // Timer Overflow
         while (time < prev_time) {
           time += max_time;
           shift += max_time;
