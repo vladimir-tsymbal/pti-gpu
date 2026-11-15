@@ -107,7 +107,8 @@ Group 1: ComputeBasic (Compute Metrics Basic set)
     - one may need to install `libdrm-dev` package to build the library from sources
     - one may need to allow metrics collection for non-root users:
         ```sh
-        sudo echo 0 > /proc/sys/dev/i915/perf_stream_paranoid
+        echo 0 | sudo tee /proc/sys/dev/i915/perf_stream_paranoid  # i915 kernel driver (e.g. PVC)
+        echo 0 | sudo tee /proc/sys/dev/xe/observation_paranoid    # xe kernel driver (e.g. BMG)
         ```
 - [Metrics Library for Metrics Discovery API (Metrics Library for MD API)](https://github.com/intel/metrics-library)
 

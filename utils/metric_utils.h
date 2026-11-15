@@ -23,28 +23,14 @@
 
 #include <metrics_discovery_api.h>
 
+#include "perf_access.h"
+
 namespace utils {
 namespace metrics {
 
-inline constexpr const char* const kProcFilePerfLocation =
-  "/proc/sys/dev/i915/perf_stream_paranoid";
-
-using ProcFileResultType = char;
-inline constexpr ProcFileResultType kProcFileExpectedValue = '0';
-inline constexpr ProcFileResultType kProcFileBadValue = '1';
-
+// Kept for existing callers; see perf_access.h (i915 and xe).
 inline bool SufficientPrivilegesForMetrics() {
-#if defined(__gnu_linux__)
-  std::ifstream setting {kProcFilePerfLocation};
-  if (setting.fail()) {
-    return false;
-  }
-  auto value = kProcFileBadValue;
-  std::copy_n(std::istream_iterator<char>(setting), sizeof value, &value);
-
-  return value == kProcFileExpectedValue;
-#endif
-  return true;
+  return utils::IsPerfAccessAllowed();
 }
 
 inline std::vector<std::string> GetMDLibraryName() {

@@ -36,7 +36,8 @@ class ZeMetricCollector {
 
     if(!utils::metrics::SufficientPrivilegesForMetrics()) {
       std::cerr << "[WARNING] Insufficent or indeterminate privileges for perf "
-        << "metrics" << std::endl;
+        << "metrics, run as root or set " << utils::GetPerfParanoidHint()
+        << " to 0" << std::endl;
     }
 
     zet_metric_group_handle_t group = utils::ze::FindMetricGroup(

@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "finalizer.h"
+#include "perf_access.h"
 #include "profiler.h"
 #include "utils.h"
 
@@ -303,7 +304,7 @@ void EnableProfiling() {
     std::cout <<
       "[WARNING] Unable to initialize Level Zero Metrics API" << std::endl;
     std::cout << "  Please check that metrics libraries are installed " <<
-      "and /proc/sys/dev/i915/perf_stream_paranoid is set to 0" << std::endl;
+      "and " << utils::GetPerfParanoidHint() << " is set to 0" << std::endl;
     exit(EXIT_FAILURE);
   }
   PTI_ASSERT(status == ZE_RESULT_SUCCESS);
@@ -324,7 +325,7 @@ void Finalize() {
     std::cout <<
       "[WARNING] Unable to initialize Level Zero Metrics API" << std::endl;
     std::cout << "  Please check that metrics libraries are installed " <<
-      "and /proc/sys/dev/i915/perf_stream_paranoid is set to 0" << std::endl;
+      "and " << utils::GetPerfParanoidHint() << " is set to 0" << std::endl;
     exit(EXIT_FAILURE);
   }
   PTI_ASSERT(status == ZE_RESULT_SUCCESS);
