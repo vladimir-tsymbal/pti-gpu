@@ -67,6 +67,44 @@ def require_icpx():
     skip("icpx (Intel(R) oneAPI DPC++/C++ Compiler) is not found, " +
          "source <oneapi>/setvars.sh")
 
+def check_device_timing(command, stderr, kernel=None):
+  """Returns an error if a device timing (-d) run doesn't report the kernel.
+
+  Kernels launched through APIs the tracer doesn't hook (e.g. the
+  zeCommandListAppendLaunchKernelWithArguments launches of the SYCL Level
+  Zero v2 adapter) are otherwise silently missing from the report.
+  --conditional-collection may legitimately collect nothing."""
+  if "-d" not in command or "--conditional-collection" in command:
+    return None
+  if kernel is None:
+    # The GEMM kernel of cl_gemm, ze_gemm and dpc_gemm; omp_gemm offloads
+    # ComputeOnGPU().
+    is_omp = any(str(arg).endswith("omp_gemm") for arg in command)
+    kernel = "ComputeOnGPU" if is_omp else "GEMM"
+  if not stderr or stderr.find(kernel) == -1:
+    return ("Kernel " + kernel + " is missing from the device timing " +
+            "report:\n" + (stderr or ""))
+  return None
+
+_sycl_l0_v2 = None
+
+def sycl_uses_level_zero_v2():
+  """True if the SYCL runtime drives the GPU with the Level Zero v2 adapter
+  (the default on Xe2 GPUs, e.g. BMG, with oneAPI 2026), which launches
+  kernels with zeCommandListAppendLaunchKernelWithArguments."""
+  global _sycl_l0_v2
+  if _sycl_l0_v2 is None:
+    _sycl_l0_v2 = False
+    if os.environ.get("UR_LOADER_USE_LEVEL_ZERO_V2", "") != "0":
+      try:
+        p = subprocess.run(["sycl-ls"], stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, timeout=60,
+                           universal_newlines=True)
+        _sycl_l0_v2 = p.stdout.find("Level-Zero V2") != -1
+      except (OSError, subprocess.SubprocessError):
+        pass
+  return _sycl_l0_v2
+
 def check_gtpin_config(stderr):
   """Skips if the CMake output shows that GTPin is unavailable."""
   if stderr and (stderr.find("GTPin package download failed") != -1 or

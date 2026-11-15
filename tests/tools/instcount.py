@@ -127,6 +127,12 @@ def main(option):
     if log:
       return log
   else:
+    if utils.sycl_uses_level_zero_v2():
+      # GTPin doesn't report the kernel runs ("runs 0 times") of the
+      # zeCommandListAppendLaunchKernelWithArguments launches of this adapter.
+      utils.skip("GTPin (4.6.4) does not count kernel runs of the SYCL " +
+                 "Level Zero v2 adapter; run with UR_LOADER_USE_LEVEL_ZERO_V2=0 " +
+                 "to test DPC++ with the legacy adapter")
     log = dpc_gemm.main("gpu")
     if log:
       return log
