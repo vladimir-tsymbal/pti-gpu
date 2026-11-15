@@ -112,6 +112,11 @@ class ZeMetricCollector {
     status = zelTracerSetEnabled(tracer_, false);
     PTI_ASSERT(status == ZE_RESULT_SUCCESS);
 #endif
+
+    // Applications that submit only through immediate command lists (e.g.
+    // SYCL on current runtimes) never synchronize or destroy a command queue,
+    // so process the queries that are still pending.
+    ProcessResults();
   }
 
   const KernelReportMap& GetKernelReportMap() const {
