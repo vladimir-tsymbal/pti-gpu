@@ -89,10 +89,17 @@ static KernelMap GetKernelMap() {
 
   int gpu_timestamp_id = metric_collector->GetMetricId("QueryBeginTime");
   PTI_ASSERT(gpu_timestamp_id >= 0);
+  // Xe-HPC and newer name these XVE_ACTIVE/XVE_STALL, older GPUs EuActive/EuStall.
+  // If the asserts fire, check the metric names with the ze_metric_info sample.
   int eu_active_id = metric_collector->GetMetricId("XVE_ACTIVE");
-  PTI_ASSERT(eu_active_id >= 0); // Note, the names of the same events might vary on different GPU models.
-  // In case of this assert, check the corresponding events names (active, stall) using ze_metric_info sample tool.
+  if (eu_active_id < 0) {
+    eu_active_id = metric_collector->GetMetricId("EuActive");
+  }
+  PTI_ASSERT(eu_active_id >= 0);
   int eu_stall_id = metric_collector->GetMetricId("XVE_STALL");
+  if (eu_stall_id < 0) {
+    eu_stall_id = metric_collector->GetMetricId("EuStall");
+  }
   PTI_ASSERT(eu_stall_id >= 0);
 
   uint32_t report_size = metric_collector->GetReportSize();

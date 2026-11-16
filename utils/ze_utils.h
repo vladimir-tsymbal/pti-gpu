@@ -353,7 +353,15 @@ inline void GetDeviceTimestamps(
   PTI_ASSERT(status == ZE_RESULT_SUCCESS);
 }
 
-// TODO: use zeMetricGetGlobalTimestamps
+// Metric timer values are taken from zeDeviceGetGlobalTimestamps, with the
+// mask and frequency below. zetMetricGroupGetGlobalTimestampsExp (and the
+// zet_metric_global_timestamps_resolution_exp_t properties) are not used: the
+// drivers disagree on what they return. Compute runtime 25.18 (PVC) reports
+// 25 MHz and 32 valid bits and returns the metric timestamp in ns; 26.05 (BMG)
+// reports 19.2 MHz and 56 valid bits and returns ticks. The values below
+// (PVC: 12.5 MHz, 31 bits; BMG: 19.2 MHz, 63 bits) give the same wrap periods
+// as both drivers (171.8 s; none in practice) and match the QueryBeginTime
+// values of the metric reports.
 inline void GetMetricTimestamps(
     ze_device_handle_t device,
     uint64_t* host_timestamp,
