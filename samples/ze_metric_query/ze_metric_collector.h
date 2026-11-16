@@ -8,6 +8,7 @@
 #define PTI_SAMPLES_ZE_METRIC_QUERY_ZE_METRIC_COLLECTOR_H_
 
 #include <atomic>
+#include <initializer_list>
 #include <map>
 #include <mutex>
 #include <string>
@@ -137,10 +138,16 @@ class ZeMetricCollector {
     return eu_stall_id_;
   }
  private: // Implementation
+  // The first of the names that the group has, or -1.
   static int GetMetricId(zet_metric_group_handle_t group,
-                         const char* name, const char* fallback_name) {
-    int id = utils::ze::GetMetricId(group, name);
-    return (id < 0) ? utils::ze::GetMetricId(group, fallback_name) : id;
+                         std::initializer_list<const char*> names) {
+    for (const char* name : names) {
+      int id = utils::ze::GetMetricId(group, name);
+      if (id >= 0) {
+        return id;
+      }
+    }
+    return -1;
   }
 
   ZeMetricCollector(
@@ -149,10 +156,10 @@ class ZeMetricCollector {
       : device_(device), context_(context),
         max_kernel_count_(max_kernel_count),
         gpu_time_id_(utils::ze::GetMetricId(group, "GpuTime")),
-        // Xe-HPC and newer name these XVE_ACTIVE/XVE_STALL, older GPUs
-        // EuActive/EuStall.
-        eu_active_id_(GetMetricId(group, "XVE_ACTIVE", "EuActive")),
-        eu_stall_id_(GetMetricId(group, "XVE_STALL", "EuStall")) {
+        // Xe-HPC and Xe2 name these XVE_ACTIVE/XVE_STALL, Xe-LPG (e.g.
+        // Arrow Lake) XveActive/XveStall, older GPUs EuActive/EuStall.
+        eu_active_id_(GetMetricId(group, {"XVE_ACTIVE", "XveActive", "EuActive"})),
+        eu_stall_id_(GetMetricId(group, {"XVE_STALL", "XveStall", "EuStall"})) {
     PTI_ASSERT(device_ != nullptr);
     PTI_ASSERT(context_ != nullptr);
     PTI_ASSERT(max_kernel_count_ > 0);

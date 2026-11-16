@@ -101,13 +101,20 @@ static KernelMap GetKernelMap() {
 
   int gpu_timestamp_id = metric_collector->GetMetricId("QueryBeginTime");
   PTI_ASSERT(gpu_timestamp_id >= 0);
-  // Xe-HPC and newer name these XVE_ACTIVE/XVE_STALL, older GPUs EuActive/EuStall.
+  // Xe-HPC and Xe2 name these XVE_ACTIVE/XVE_STALL, Xe-LPG (e.g. Arrow Lake)
+  // XveActive/XveStall, older GPUs EuActive/EuStall.
   int eu_active_id = metric_collector->GetMetricId("XVE_ACTIVE");
+  if (eu_active_id < 0) {
+    eu_active_id = metric_collector->GetMetricId("XveActive");
+  }
   if (eu_active_id < 0) {
     eu_active_id = metric_collector->GetMetricId("EuActive");
   }
   PTI_ASSERT(eu_active_id >= 0);
   int eu_stall_id = metric_collector->GetMetricId("XVE_STALL");
+  if (eu_stall_id < 0) {
+    eu_stall_id = metric_collector->GetMetricId("XveStall");
+  }
   if (eu_stall_id < 0) {
     eu_stall_id = metric_collector->GetMetricId("EuStall");
   }
