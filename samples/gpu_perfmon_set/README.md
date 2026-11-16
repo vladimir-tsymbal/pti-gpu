@@ -2,7 +2,7 @@
 ## Overview
 This sample utility allows to tune Intel(R) Processor Graphics execution unit (EU) performance monitoring register to collect hardware events of some type.
 
-The utility has a single parameter that contains the value one would like to set for events collection. Actual values are described in Programmer's Reference Manual for Intel(R) Processor Graphics, [Volume 14: Observability](https://01.org/sites/default/files/documentation/intel-gfx-prm-osrc-kbl-vol14-observability.pdf), e.g.:
+The utility has a single parameter that contains the value one would like to set for events collection. Actual values are described in Programmer's Reference Manual for Intel(R) Processor Graphics (Kaby Lake), [Volume 14: Observability](https://cdrdv2.intel.com/v1/dl/getContent/723971), e.g.:
 ```sh
 ./gpu_perfmon_set 5 # EU Stall Collection
 ```
@@ -23,11 +23,16 @@ echo 0 | sudo tee /proc/sys/dev/xe/observation_paranoid    # xe kernel driver (e
 ## Supported OS
 - Linux
 
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
+- Metrics (OA) collection: tested with both kernel drivers: the configuration is added and the stream opens. Whether the PM register counts the expected events on these GPUs is not verified
+
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
-- [libdrm](https://gitlab.freedesktop.org/mesa/drm)
+- [Python](https://www.python.org/) (version 3.9 and above)
+- [libdrm](https://dri.freedesktop.org/libdrm/)
 
 ## Build and Run
 ### Linux

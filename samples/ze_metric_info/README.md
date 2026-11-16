@@ -1,23 +1,21 @@
 # Level Zero Metrics Info
 ## Overview
-This sample application queries the information about the hardwre metrics for Intel(R) Processor Graphics, available to collect through Level Zero Metrics API.
+This sample application queries the information about the hardware metrics for Intel(R) Processor Graphics, available to collect through Level Zero Metrics API.
 
 Expected output should be the following (DN means the domain number, TBS and EBS are time or event based sampling correspondingly):
 ```
-Target device: Intel(R) Gen9
-Metric Group 0: D3 / TBS / RenderBasic (Render Metrics Basic Gen9)
-    Metric 0: : D3 / TBS / RenderBasic / GpuTime (Time elapsed on the GPU during the measurement.)
-    Metric 1: : D3 / TBS / RenderBasic / GpuCoreClocks (The total number of GPU core clocks elapsed during the measurement.)
-    Metric 2: : D3 / TBS / RenderBasic / AvgGpuCoreFrequencyMHz (Average GPU Core Frequency in the measurement.)
-    Metric 3: : D3 / TBS / RenderBasic / VsThreads (The total number of vertex shader hardware threads dispatched.)
+Target device: <GPU name>
+Metric Group 0: D3 / TBS / RenderBasic (RenderBasic)
+    Metric 0: D3 / TBS / RenderBasic / GpuTime (Time elapsed on the GPU during the measurement.) [UINT64, EVENT]
+    Metric 1: D3 / TBS / RenderBasic / GpuCoreClocks (The total number of GPU core clocks elapsed during the measurement.) [UINT64, EVENT]
+    Metric 2: D3 / TBS / RenderBasic / AvgGpuCoreFrequencyMHz (Average GPU Core Frequency in the measurement.) [UINT64, EVENT]
+    Metric 3: D3 / TBS / RenderBasic / ResultUncertainty (Result uncertainty indicator) [UINT64, EVENT]
     ...
-    Metric 55: : D3 / TBS / RenderBasic / ReportReason (The reason of the report.)
-    Metric 56: : D3 / TBS / RenderBasic / ContextId (The context tag in which report has been taken.)
-Metric Group 1: D3 / EBS / RenderBasic (Render Metrics Basic Gen9)
-    Metric 0: : D3 / EBS / RenderBasic / GpuTime (Time elapsed on the GPU during the measurement.)
-    Metric 1: : D3 / EBS / RenderBasic / GpuCoreClocks (The total number of GPU core clocks elapsed during the measurement.)
-    Metric 2: : D3 / EBS / RenderBasic / AvgGpuCoreFrequencyMHz (Average GPU Core Frequency in the measurement.)
-    Metric 3: : D3 / EBS / RenderBasic / VsThreads (The total number of vertex shader hardware threads dispatched.)
+Metric Group 1: D3 / EBS / RenderBasic (RenderBasic)
+    Metric 0: D3 / EBS / RenderBasic / GpuTime (Time elapsed on the GPU during the measurement.) [UINT64, EVENT]
+    Metric 1: D3 / EBS / RenderBasic / GpuCoreClocks (The total number of GPU core clocks elapsed during the measurement.) [UINT64, EVENT]
+    Metric 2: D3 / EBS / RenderBasic / AvgGpuCoreFrequencyMHz (Average GPU Core Frequency in the measurement.) [UINT64, EVENT]
+    Metric 3: D3 / EBS / RenderBasic / ResultUncertainty (Result uncertainty indicator) [UINT64, EVENT]
 ...
 ```
 To set target device and sub-device to collect metric info from one can specify `PTI_DEVICE_ID` and `PTI_SUB_DEVICE_ID` environment variables.
@@ -26,14 +24,24 @@ To set target device and sub-device to collect metric info from one can specify 
 - Linux
 - Windows (*under development*)
 
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
+- Metrics (OA) collection: tested with both kernel drivers
+
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
+- [Python](https://www.python.org/) (version 3.9 and above)
 - [oneAPI Level Zero loader](https://github.com/oneapi-src/level-zero)
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime)
 - [Intel(R) Metrics Discovery Application Programming Interface](https://github.com/intel/metrics-discovery)
 - [Metrics Library for Metrics Discovery API (Metrics Library for MD API)](https://github.com/intel/metrics-library)
+- On Linux one may need to enable metrics collection for non-root users:
+  ```sh
+  echo 0 | sudo tee /proc/sys/dev/i915/perf_stream_paranoid  # i915 kernel driver (e.g. PVC)
+  echo 0 | sudo tee /proc/sys/dev/xe/observation_paranoid    # xe kernel driver (e.g. BMG)
+  ```
 
 ## Build and Run
 ### Linux
