@@ -13,6 +13,8 @@
 #include <vector>
 #include <algorithm>
 
+#include <CL/cl_ext.h>
+
 #include "cl_api_tracer.h"
 #include "cl_utils.h"
 #include "metric_device.h"
@@ -61,6 +63,9 @@ using ClKernelInfoMap = std::map<std::string, ClKernelInfo>;
 
 class ClMetricCollector {
  public: // Interface
+  // Without PTI_DEVICE_ID, the metrics come from the GPU at the PCI address
+  // of device, if MD API has it: with several GPUs (e.g. a dGPU and an iGPU)
+  // the first adapter may be another GPU than the one the queries run on.
   static ClMetricCollector* Create(cl_device_id device, const char* set_name) {
     PTI_ASSERT(device != nullptr);
     PTI_ASSERT(set_name != nullptr);
@@ -71,6 +76,20 @@ class ClMetricCollector {
     std::string sub_device_string = utils::GetEnv("PTI_SUB_DEVICE_ID");
     uint32_t sub_device_id =
       sub_device_string.empty() ? 0 : std::stoul(sub_device_string);
+
+#if defined(CL_DEVICE_PCI_BUS_INFO_KHR)
+    if (device_string.empty()) {
+      cl_device_pci_bus_info_khr pci{};
+      if (clGetDeviceInfo(device, CL_DEVICE_PCI_BUS_INFO_KHR, sizeof(pci),
+                          &pci, nullptr) == CL_SUCCESS) {
+        int id = MetricDevice::FindDeviceId(
+            pci.pci_bus, pci.pci_device, pci.pci_function);
+        if (id >= 0) {
+          device_id = static_cast<uint32_t>(id);
+        }
+      }
+    }
+#endif
 
     MetricDevice* metric_device =
       MetricDevice::Create(device_id, sub_device_id);
