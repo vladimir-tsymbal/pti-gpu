@@ -67,6 +67,7 @@ def getTestAppCommand(option, matrixSize, iterations):
     return ["./instcount", app_file, "gpu",  f"{matrixSize}", f"{iterations}"]
 
 def isValidOutput(stdout, stderr):
+  utils.skip_if_gtpin_unsupported(stdout, stderr)
   if not stdout:
     return "stdout is empty"
   if not stderr:
