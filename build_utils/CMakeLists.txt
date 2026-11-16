@@ -14,6 +14,12 @@ macro(RequirePythonInterp)
 endmacro()
 
 macro(SetCompilerFlags)
+  # The code needs C++17 (e.g. inline constexpr variables). Set it instead of
+  # relying on the compiler default; -DCMAKE_CXX_STANDARD=<n> can raise it.
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+  endif()
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
   if(WIN32)
     set(ADD_FLAGS " ")
     add_definitions(-DNOMINMAX)
