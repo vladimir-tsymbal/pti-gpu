@@ -9,100 +9,87 @@ As a result, assembly listing annotated with dynamic instruction count and SIMD 
 ```console
 
 [INFO] : [ Instruction count | SIMD active lanes count ] total for all invocations
-=== GEMM(runs 4 times) ===
-[   2048|   16384] 0x000000 : (W)     mov (8|M0)               r5.0<1>:ud    r0.0<1;1,0>:ud                  
-[   2048|    2048] 0x000010 : (W)     or (1|M0)                cr0.0<1>:ud   cr0.0<0;1,0>:ud   0x4C0:uw              {@1}
-[   2048|    2048] 0x000020 : (W)     mul (1|M0)               acc0.0<1>:d   r9.2<0;1,0>:d     r5.2<0;1,0>:uw   {@1}
-[   2048|    2048] 0x000030 : (W)     mach (1|M0)              r6.0<1>:d     r9.2<0;1,0>:d     r5.1<0;1,0>:d   
-[   2048|    2048] 0x000040 : (W)     mul (1|M0)               acc0.0<1>:d   r9.3<0;1,0>:d     r5.12<0;1,0>:uw 
-[   2048|    2048] 0x000050 : (W)     mach (1|M0)              r8.0<1>:d     r9.3<0;1,0>:d     r5.6<0;1,0>:d   
-[   2048|   32768] 0x000060 : (W)     cmp (16|M0)   (gt)f1.0   null<1>:d     r8.6<0;1,0>:d     0:w              
-[   2048|   32768] 0x000070 :         add (16|M0)              r18.0<1>:d    r8.0<0;1,0>:d     r3.0<16;16,1>:uw {@2}
-[   2048|   32768] 0x000080 :         add (16|M16)             r20.0<1>:d    r8.0<0;1,0>:d     r4.0<16;16,1>:uw
-[   2048|   32768] 0x000090 :         add (16|M0)              r18.0<1>:d    r18.0<8;8,1>:d    r7.1<0;1,0>:d    {Compacted,@2}
-[   2048|   32768] 0x000098 :         add (16|M16)             r20.0<1>:d    r20.0<8;8,1>:d    r7.1<0;1,0>:d    {Compacted,@2}
-[   2048|   32768] 0x0000a0 : (W)     cmp (16|M16)  (gt)f1.0   null<1>:d     r8.6<0;1,0>:d     0:w              
-[   2048|   16384] 0x0000b0 : (W)     mul (8|M0)               acc0.0<1>:d   r18.0<8;8,1>:d    r8.12<0;1,0>:uw  {Compacted,@3}
-[   2048|   32768] 0x0000b8 :         add (16|M0)              r10.0<1>:d    r6.0<0;1,0>:d     r1.0<16;16,1>:uw {@7}
-[   2048|   32768] 0x0000c8 :         add (16|M16)             r12.0<1>:d    r6.0<0;1,0>:d     r2.0<16;16,1>:uw
-[   2048|   16384] 0x0000d8 :         mach (8|M0)              r22.0<1>:d    r18.0<8;8,1>:d    r8.6<0;1,0>:d    {Compacted}
-[   2048|   16384] 0x0000e0 : (W)     mul (8|M8)               acc0.0<1>:d   r19.0<8;8,1>:d    r8.12<0;1,0>:uw 
-[   2048|   16384] 0x0000f0 :         mach (8|M8)              r23.0<1>:d    r19.0<8;8,1>:d    r8.6<0;1,0>:d    {Compacted}
-[   2048|   16384] 0x0000f8 : (W)     mul (8|M16)              acc0.0<1>:d   r20.0<8;8,1>:d    r8.12<0;1,0>:uw  {@7}
-[   2048|   16384] 0x000108 :         mach (8|M16)             r24.0<1>:d    r20.0<8;8,1>:d    r8.6<0;1,0>:d    {Compacted}
-[   2048|   16384] 0x000110 : (W)     mul (8|M24)              acc0.0<1>:d   r21.0<8;8,1>:d    r8.12<0;1,0>:uw 
-[   2048|   32768] 0x000120 :         add (16|M0)              r14.0<1>:d    r10.0<8;8,1>:d    r7.0<0;1,0>:d    {Compacted,@7}
-[   2048|   32768] 0x000128 :         add (16|M16)             r16.0<1>:d    r12.0<8;8,1>:d    r7.0<0;1,0>:d    {Compacted,@7}
-[   2048|   16384] 0x000130 :         mach (8|M24)             r25.0<1>:d    r21.0<8;8,1>:d    r8.6<0;1,0>:d    {Compacted}
-[   2048|    8192] 0x000138 : (W)     csel (4|M0)   (eq)f0.0   r1.0<1>:w     r1.0<4;1>:w       r1.0<4;1>:w       r1.0<1>:w       
-[   2048|       0] 0x000148 : (~f1.0) if (32|M0)                           48                  368                
-[      0|       0] 0x000158 :         mov (16|M0)              r26.0<1>:f    0x0:f                               {Compacted}
-[      0|       0] 0x000160 :         mov (16|M16)             r28.0<1>:f    0x0:f                               {Compacted}
-[      0|       0] 0x000168 :         else (32|M0)                         336                  336                
-[   2048|   32768] 0x000178 :         mov (16|M0)              r26.0<1>:f    0x0:f                               {Compacted}
-[   2048|   32768] 0x000180 :         mov (16|M16)             r28.0<1>:f    0x0:f                               {Compacted}
-[   2048|    2048] 0x000188 : (W)     mov (1|M0)               r6.1<1>:f     0x0:f                               {Compacted}
-[ 262144|  262144] 0x000190 : (W)     mul (1|M0)               acc0.0<1>:d   r6.1<0;1,0>:d     r8.12<0;1,0>:uw  {@1}
-[ 262144|  262144] 0x0001a0 : (W)     mach (1|M0)              r34.0<1>:d    r6.1<0;1,0>:d     r8.6<0;1,0>:d   
-[ 262144| 4194304] 0x0001b0 :         add (16|M0)              r30.0<1>:d    r22.0<8;8,1>:d    r6.1<0;1,0>:d    {Compacted}
-[ 262144| 4194304] 0x0001b8 :         add (16|M16)             r32.0<1>:d    r24.0<8;8,1>:d    r6.1<0;1,0>:d    {Compacted}
-[ 262144| 4194304] 0x0001c0 :         add (16|M0)              r39.0<1>:d    r34.0<0;1,0>:d    r14.0<8;8,1>:d   {Compacted,@3}
-[ 262144| 4194304] 0x0001c8 :         add (16|M16)             r41.0<1>:d    r34.0<0;1,0>:d    r16.0<8;8,1>:d   {Compacted}
-[ 262144| 4194304] 0x0001d0 :         shl (16|M0)              r30.0<1>:d    r30.0<8;8,1>:d    2:w               {Compacted,@4}
-[ 262144| 4194304] 0x0001d8 :         shl (16|M16)             r32.0<1>:d    r32.0<8;8,1>:d    2:w               {Compacted,@4}
-[ 262144| 4194304] 0x0001e0 :         shl (16|M0)              r39.0<1>:d    r39.0<8;8,1>:d    2:w               {Compacted,@4}
-[ 262144| 4194304] 0x0001e8 :         shl (16|M16)             r41.0<1>:d    r41.0<8;8,1>:d    2:w               {Compacted,@4}
-[ 262144| 4194304] 0x0001f0 :         add (16|M0)              r30.0<1>:d    r30.0<8;8,1>:d    r8.7<0;1,0>:d    {Compacted,@4}
-[ 262144| 4194304] 0x0001f8 :         add (16|M16)             r32.0<1>:d    r32.0<8;8,1>:d    r8.7<0;1,0>:d    {Compacted,@4}
-[ 262144| 4194304] 0x000200 :         add (16|M0)              r39.0<1>:d    r39.0<8;8,1>:d    r9.0<0;1,0>:d    {Compacted,@4}
-[ 262144| 4194304] 0x000208 :         add (16|M16)             r41.0<1>:d    r41.0<8;8,1>:d    r9.0<0;1,0>:d    {Compacted,@4}
-[ 262144| 4194304] 0x000210 :         send.dc1 (16|M0)         r35      r30     null    0x0            0x04205E00           {@4,$0} // wr:2+0, rd:2; untyped surface read with x
-[ 262144| 4194304] 0x000220 :         send.dc1 (16|M16)        r37      r32     null    0x0            0x04205E00           {@3,$1} // wr:2+0, rd:2; untyped surface read with x
-[ 262144| 4194304] 0x000230 :         send.dc1 (16|M0)         r44      r39     null    0x0            0x04205E01           {@2,$2} // wr:2+0, rd:2; untyped surface read with x
-[ 262144| 4194304] 0x000240 :         send.dc1 (16|M16)        r46      r41     null    0x0            0x04205E01           {@1,$3} // wr:2+0, rd:2; untyped surface read with x
-[ 262144|  262144] 0x000250 : (W)     add (1|M0)               r6.1<1>:d     r6.1<0;1,0>:d     1:w               {Compacted}
-[ 262144| 4194304] 0x000258 : (W)     cmp (16|M0)   (lt)f0.0   null<1>:d     r6.1<0;1,0>:d     r8.6<0;1,0>:d    {@1}
-[ 262144| 4194304] 0x000268 : (W)     cmp (16|M16)  (lt)f0.0   null<1>:d     r6.1<0;1,0>:d     r8.6<0;1,0>:d   
-[ 262144|  262144] 0x000278 :         sync.nop                             null                             {Compacted,$2.dst}
-[ 262144| 4194304] 0x000280 :         mad (16|M0)              r26.0<1>:f    r26.0<8;1>:f      r35.0<8;1>:f      r44.0<1>:f       {Compacted,$0.dst}
-[ 262144|  262144] 0x000288 :         sync.nop                             null                             {Compacted,$3.dst}
-[ 262144| 4194304] 0x000290 :         mad (16|M16)             r28.0<1>:f    r28.0<8;1>:f      r37.0<8;1>:f      r46.0<1>:f       {Compacted,$1.dst}
-[ 262144| 1048576] 0x000298 : (W)     csel (4|M0)   (eq)f0.0   r1.0<1>:w     r1.0<4;1>:w       r1.0<4;1>:w       r1.0<1>:w       
-[ 262144| 8323072] 0x0002a8 : (f0.0)  while (32|M0)                        -280                                
-[   2048|   65536] 0x0002b8 :         endif (32|M0)                        16                                
-[   2048|   32768] 0x0002c8 :         add (16|M0)              r48.0<1>:d    r22.0<8;8,1>:d    r14.0<8;8,1>:d   {Compacted}
-[   2048|   32768] 0x0002d0 :         add (16|M16)             r50.0<1>:d    r24.0<8;8,1>:d    r16.0<8;8,1>:d   {Compacted}
-[   2048|   32768] 0x0002d8 :         shl (16|M0)              r48.0<1>:d    r48.0<8;8,1>:d    2:w               {Compacted,@2}
-[   2048|   32768] 0x0002e0 :         shl (16|M16)             r50.0<1>:d    r50.0<8;8,1>:d    2:w               {Compacted,@2}
-[   2048|   32768] 0x0002e8 :         add (16|M0)              r48.0<1>:d    r48.0<8;8,1>:d    r9.1<0;1,0>:d    {Compacted,@2}
-[   2048|   32768] 0x0002f0 :         add (16|M16)             r50.0<1>:d    r50.0<8;8,1>:d    r9.1<0;1,0>:d    {Compacted,@2}
-[   2048|   32768] 0x0002f8 :         send.dc1 (16|M0)         null     r48     r26     0x80            0x04025E02           {@2,$4} // wr:2+2, rd:0; untyped surface write with x
-[   2048|   32768] 0x000308 :         send.dc1 (16|M16)        null     r50     r28     0x80            0x04025E02           {@1,$5} // wr:2+2, rd:0; untyped surface write with x
-[   2048|   16384] 0x000318 : (W)     mov (8|M0)               r127.0<1>:f   r5.0<8;8,1>:f                    {Compacted}
-[   2048|   16384] 0x000320 : (W)     send.dc0 (8|M0)          r43      r5      null    0x0            0x0219E000           {$6} // wr:1h+0, rd:1; synchronized global fence flushing
-[   2048|   16384] 0x000330 : (W)     mov (8|M0)               null<1>:ud    r43.0<8;8,1>:ud                  {$6.dst}
-[   2048|   32768] 0x000340 : (W)     mov (16|M0)              acc0.0<1>:f   0x0:f                              
-[   2048|    2048] 0x000350 : (W)     send.ts (1|M0)           null     r127    null    0x0            0x02000010           {EOT,@1} // wr:1+0, rd:0; end of thread
-[      0|       0] 0x000360 :         nop                    
+=== GEMM (runs 1 times)
+///  Basic block #0
+[    32768|      32768] 0x000180 : (W)     or (1|M0)                cr0.0<1>:ud   cr0.0<0;1,0>:ud   0x4C0:uw              {Compacted,A@1}
+[    32768|      32768] 0x000188 : (W)     mul (1|M0)               acc0.0<1>:d   r4.8<0;1,0>:d     r0.2<0;1,0>:uw   {Compacted,A@1,$2.dst}
+[    32768|      32768] 0x000190 : (W)     macl (1|M0)              r3.0<1>:d     r4.8<0;1,0>:d     r0.1<0;1,0>:d    {Compacted,$1.dst}
+[    32768|      32768] 0x000198 : (W)     mul (1|M0)               acc0.0<1>:d   r4.9<0;1,0>:d     r0.12<0;1,0>:uw
+[    32768|      32768] 0x0001a8 : (W)     macl (1|M0)              r9.0<1>:d     r4.9<0;1,0>:d     r0.6<0;1,0>:d
+[    32768|    1048576] 0x0001b8 : (W)     cmp (32|M0)   (eq)f0.0   null<1>:d     r5.2<0;1,0>:d     0:w               {$3.dst}
+[    32768|      32752] 0x0001c8 :         sync.nop                             null                             {Compacted,I@2}
+[    32768|    1048428] 0x0001d0 :         add3 (32|M0)             r10.0<1>:d    r9.0<0;0>:d       r2.0<1;0>:uw      r4.1<0>:d        {$0.dst}
+[    32768|    1048428] 0x0001e0 :         add (32|M0)              r7.0<1>:d     r3.0<0;1,0>:d     r1.0<1;1,0>:uw
+[    32768|     524288] 0x0001f0 : (W)     mul (16|M0)              acc0.0<1>:d   r10.0<1;1,0>:d    r5.4<0;1,0>:uw   {Compacted,I@2}
+[    32768|     523967] 0x0001f8 :         macl (16|M0)             r12.0<1>:d    r10.0<1;1,0>:d    r5.2<0;1,0>:d    {Compacted}
+[    32768|     524288] 0x000200 : (W)     mul (16|M16)             acc0.0<1>:d   r11.0<1;1,0>:d    r5.4<0;1,0>:uw   {Compacted}
+[    32768|     523997] 0x000208 :         macl (16|M16)            r13.0<1>:d    r11.0<1;1,0>:d    r5.2<0;1,0>:d    {Compacted}
+[    32768|      32768] 0x000210 : (W&~f0.0) jmpi                               40
+///  Basic block #1
+[        0|          0] 0x000220 :         mov (32|M0)              r14.0<1>:ud   0x0:ud                              {Compacted}
+[        0|          0] 0x000228 : (W)     jmpi                                 280
+///  Basic block #2
+[    32768|     524213] 0x000238 :         mov (16|M0)              r38.0<2>:ud   r12.0<1;1,0>:ud                  {Compacted,I@6}
+[    32768|     524112] 0x000240 :         mov (16|M16)             r40.0<2>:ud   r13.0<1;1,0>:ud                  {Compacted,I@5}
+[    32768|    1048276] 0x000248 :         mov (32|M0)              r14.0<1>:ud   0x0:ud                              {Compacted}
+[    32768|     524213] 0x000250 :         shl (16|M0)              r50.0<1>:q    r38.0<2;1,0>:ud   2:w               {Compacted,I@3}
+[    32768|     524112] 0x000258 :         shl (16|M16)             r52.0<1>:q    r40.0<2;1,0>:ud   2:w               {Compacted,I@3}
+[    32768|     524213] 0x000260 :         add (16|M0)              r16.0<1>:q    r50.0<1;1,0>:q    r4.6<0;1,0>:q    {Compacted,I@2}
+[    32768|     524112] 0x000268 :         add (16|M16)             r18.0<1>:q    r52.0<1;1,0>:q    r4.6<0;1,0>:q    {Compacted,I@2}
+[    32768|      32768] 0x000270 : (W)     mov (1|M0)               r3.1<1>:d     0:w                               {Compacted}
+///  Basic block #3
+[ 33554432|   33554432] 0x000278 : (W)     mul (1|M0)               acc0.0<1>:d   r3.1<0;1,0>:d     r5.4<0;1,0>:uw   {Compacted,I@1}
+[ 33554432|   33554432] 0x000280 : (W)     macl (1|M0)              r23.0<1>:d    r3.1<0;1,0>:d     r5.2<0;1,0>:d    {Compacted}
+[ 33554432| 1073371759] 0x000288 :         send.ugm (32|M0)         r21      r16     null:0  0x0            0x08200580           {$4} // wr:4+0, rd:2; load.ugm.d32.a64
+[ 33554432| 1073518075] 0x000298 :         add3 (32|M0)             r24.0<1>:d    r23.0<0;0>:d      r7.0<1;0>:d       r4.0<0>:d        {Compacted,I@1}
+[ 33554432|  536665541] 0x0002a0 :         mov (16|M0)              r42.0<2>:ud   r24.0<1;1,0>:ud                  {Compacted,I@1}
+[ 33554432|  536686289] 0x0002a8 :         mov (16|M16)             r44.0<2>:ud   r25.0<1;1,0>:ud                  {Compacted}
+[ 33554432|  536665541] 0x0002b0 :         shl (16|M0)              r54.0<1>:q    r42.0<2;1,0>:ud   2:w               {Compacted,I@2}
+[ 33554432|  536686289] 0x0002b8 :         shl (16|M16)             r56.0<1>:q    r44.0<2;1,0>:ud   2:w               {Compacted,I@2}
+[ 33554432|  536665541] 0x0002c0 :         add (16|M0)              r26.0<1>:q    r54.0<1;1,0>:q    r4.7<0;1,0>:q    {Compacted,I@2}
+[ 33554432|  536686289] 0x0002c8 :         add (16|M16)             r28.0<1>:q    r56.0<1;1,0>:q    r4.7<0;1,0>:q    {Compacted,I@2}
+[ 33554432| 1073371759] 0x0002d0 :         send.ugm (32|M0)         r30      r26     null:0  0x0            0x08200580           {A@1,$5} // wr:4+0, rd:2; load.ugm.d32.a64
+[ 33554432|   33554432] 0x0002e0 : (W)     add (1|M0)               r3.1<1>:d     r3.1<0;1,0>:d     1:w
+[ 33554432| 1073741824] 0x0002f0 : (W)     cmp (32|M0)   (lt)f1.0   null<1>:ud    r3.1<0;1,0>:ud    r5.2<0;1,0>:ud   {I@1}
+[ 33554432|   33549315] 0x000300 :         sync.nop                             null                             {Compacted,$5.dst}
+[ 33554432| 1073266701] 0x000308 :         mad (32|M0)              r14.0<1>:f    r14.0<1;0>:f      r21.0<1;0>:f      r30.0<1>:f       {Compacted,$4.dst}
+[ 33554432|      32768] 0x000310 : (W&~f1.0) jmpi                               48
+///  Basic block #4
+[ 33521664|  536142985] 0x000320 :         add (16|M0)              r16.0<1>:q    r16.0<1;1,0>:q    4:w               {Compacted}
+[ 33521664|  536162036] 0x000328 :         add (16|M16)             r18.0<1>:q    r18.0<1;1,0>:q    4:w               {Compacted}
+[ 33521664|   33521664] 0x000330 : (W)     jmpi                                 -184
+///  Basic block #5
+[    32768|    1048213] 0x000340 :         add3 (32|M0)             r32.0<1>:d    r12.0<1;0>:d      r7.0<1;0>:d       r4.0<0>:d        {Compacted}
+[    32768|     524142] 0x000348 :         mov (16|M0)              r46.0<2>:ud   r32.0<1;1,0>:ud                  {Compacted,I@1}
+[    32768|     524272] 0x000350 :         mov (16|M16)             r48.0<2>:ud   r33.0<1;1,0>:ud                  {Compacted}
+[    32768|     524142] 0x000358 :         shl (16|M0)              r58.0<1>:q    r46.0<2;1,0>:ud   2:w               {Compacted,I@2}
+[    32768|     524272] 0x000360 :         shl (16|M16)             r60.0<1>:q    r48.0<2;1,0>:ud   2:w               {Compacted,I@2}
+[    32768|     524142] 0x000368 :         add (16|M0)              r34.0<1>:q    r58.0<1;1,0>:q    r5.0<0;1,0>:q    {Compacted,I@2}
+[    32768|     524272] 0x000370 :         add (16|M16)             r36.0<1>:q    r60.0<1;1,0>:q    r5.0<0;1,0>:q    {Compacted,I@2}
+[    32768|    1048545] 0x000378 :         send.ugm (32|M0)         null     r34     r14:2   0x0            0x08000584           {A@1,$6} // wr:4+2, rd:0; store.ugm.d32.a64
+[    32768|     524288] 0x000388 : (W)     mov (16|M0)              r127.0<1>:ud  r0.0<1;1,0>:ud                   {Compacted}
+///  Basic block #6
+[    32768|      32768] 0x000390 : (W)     send.gtwy (1|M0)         null     r127    null:0  0x0            0x02000010           {EOT,I@1,$7} // wr:1+0, rd:0; end of thread
+///  Basic block #7
+[        0|          0] 0x0003a0 :         nop
 ```
 
 The following capabilities are available:
 ```console
 --disable-simd                 Disable SIMD active lanes collection
 --json-output                  Print results in JSON format
---version                      Print version
 ```
 
 ## Supported OS
 
-- Ubuntu 22.04 (last check: GTPin v4.0, driver 1.3.27912)
+- Ubuntu 24.04 with the i915 kernel driver on Intel(R) Data Center GPU Max 1550, and Ubuntu 26.04 with the xe kernel driver on Intel(R) Arc(TM) B570 Graphics (last check: GT Pin 5.0.0, compute-runtime 25.18 and 26.05; versions in [SOFTWARE](../../SOFTWARE))
 - Windows 11 (last check: GTPin v4.0, driver 31.0.101.4887)
 
 ## Prerequisites
 
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Graphics Technology Pin (GT Pin)](https://software.intel.com/content/www/us/en/develop/articles/gtpin.html)
+- [Graphics Technology Pin (GT Pin)](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html)
 
 ## Build and Run
 
@@ -126,12 +113,12 @@ Use this command line to run the tool:
 ./instcount <target_application>
 ```
 
-One may use [cl_gemm](../cl_gemm), [ze_gemm](../ze_gemm) or [dpc_gemm](../dpc_gemm) as target application:
+One may use [cl_gemm](../../samples/cl_gemm), [ze_gemm](../../samples/ze_gemm) or [dpc_gemm](../../samples/dpc_gemm) as target application:
 
 ```sh
-./instcount ../../cl_gemm/build/cl_gemm
-./instcount ../../ze_gemm/build/ze_gemm
-./instcount ../../dpc_gemm/build/dpc_gemm
+./instcount ../../../samples/cl_gemm/build/cl_gemm
+./instcount ../../../samples/ze_gemm/build/ze_gemm
+./instcount ../../../samples/dpc_gemm/build/dpc_gemm
 ```
 
 ### Windows
@@ -160,7 +147,7 @@ set PATH=%PATH%;_deps\gtpin_package-src\Profilers\Lib\intel64
 instcount.exe <target_application>
 ```
 
-One may use [cl_gemm](../cl_gemm), [ze_gemm](../ze_gemm) or [dpc_gemm](../dpc_gemm) as target application:
+One may use [cl_gemm](../../samples/cl_gemm), [ze_gemm](../../samples/ze_gemm) or [dpc_gemm](../../samples/dpc_gemm) as target application:
 
 ```sh
 set PATH=%PATH%;<gtpin>\Profilers\Lib\intel64

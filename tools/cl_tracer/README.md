@@ -27,98 +27,108 @@ Options:
 **Call Logging** mode allows to grab full host API trace, e.g.:
 ```
 ...
->>>> [271632470] clCreateBuffer: context = 0x5591dba3f860 flags = 4 size = 4194304 hostPtr = 0 errcodeRet = 0x7ffd334b2f04
-<<<< [271640078] clCreateBuffer [7608 ns] result = 0x5591dbaa5760 -> CL_SUCCESS (0)
->>>> [272171119] clEnqueueWriteBuffer: commandQueue = 0x5591dbf4be70 buffer = 0x5591dbaa5760 blockingWrite = 1 offset = 0 cb = 4194304 ptr = 0x5591dc92af90 numEventsInWaitList = 0 eventWaitList = 0 event = 0
-<<<< [272698660] clEnqueueWriteBuffer [527541 ns] -> CL_SUCCESS (0)
->>>> [272716922] clSetKernelArg: kernel = 0x5591dc500c60 argIndex = 0 argSize = 8 argValue = 0x7ffd334b2f10
-<<<< [272724034] clSetKernelArg [7112 ns] -> CL_SUCCESS (0)
->>>> [272729938] clSetKernelArg: kernel = 0x5591dc500c60 argIndex = 1 argSize = 8 argValue = 0x7ffd334b2f18
-<<<< [272733712] clSetKernelArg [3774 ns] -> CL_SUCCESS (0)
+>>>> [107857] clGetDeviceInfo: device = 0x5681c9daa0d0 paramName = 4140 paramValueSize = 1024 paramValue = 0x7ffc55b23080 paramValueSizeRet = 0
+<<<< [109253] clGetDeviceInfo [70 ns] -> CL_SUCCESS (0)
+<<<< [121667] clGetDeviceInfo [129 ns] -> CL_SUCCESS (0)
+>>>> [6356473] clCreateContext: properties = 0 numDevices = 1 devices = 0x7ffc55b23628 funcNotify = 0 userData = 0 errcodeRet = 0x7ffc55b2361c
+<<<< [6383429] clCreateContext [14291 ns] result = 0x5681c88f0b70 -> CL_SUCCESS (0)
+>>>> [6388494] clCreateCommandQueueWithProperties: context = 0x5681c88f0b70 device = 0x5681c9daa0d0 properties = 0x7ffc55b236d0 errcodeRet = 0x7ffc55b2361c
+<<<< [6398261] clCreateCommandQueueWithProperties [7353 ns] result = 0x5681c88f1330 -> CL_SUCCESS (0)
+>>>> [6408291] clCreateProgramWithSource: context = 0x5681c88f0b70 count = 1 strings = 0x5681ae6d4010 lengths = 0 errcodeRet = 0x7ffc55b2361c
 ...
 ```
-**Chrome Call Logging** mode dumps API calls to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool) browser tool.
+**Chrome Call Logging** mode dumps API calls to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/) browser tool.
 
 **Host Timing** mode collects duration for each API call and provides the summary for the whole application:
 ```
 === API Timing Results: ===
 
-          Total Execution Time (ns):    366500174
-Total API Time for CPU backend (ns):        16851
-Total API Time for GPU backend (ns):    357744252
+          Total Execution Time (ns):             32775017
+Total API Time for CPU backend (ns):                  358
+Total API Time for GPU backend (ns):             19591631
 
 == CPU Backend: ==
 
       Function,       Calls,           Time (ns),  Time (%),        Average (ns),            Min (ns),            Max (ns)
-clGetDeviceIDs,           1,               16851,    100.00,               16851,               16851,               16851
+clGetDeviceIDs,           1,                 358,    100.00,                 358,                 358,                 358
 
 == GPU Backend: ==
 
                           Function,       Calls,           Time (ns),  Time (%),        Average (ns),            Min (ns),            Max (ns)
-                          clFinish,           4,           174933263,     48.90,            43733315,            42966659,            44067629
-                    clBuildProgram,           1,           172466699,     48.21,           172466699,           172466699,           172466699
-              clEnqueueWriteBuffer,           8,             3788816,      1.06,              473602,              367912,              593802
-            clEnqueueNDRangeKernel,           4,             3238743,      0.91,              809685,              208889,             2562605
+                          clFinish,           4,            14814345,     75.62,             3703586,             3488856,             3833858
+              clEnqueueWriteBuffer,           8,             2165171,     11.05,              270646,               83618,             1177368
+               clEnqueueReadBuffer,           4,             1616550,      8.25,              404137,              303211,              542093
+            clEnqueueNDRangeKernel,           4,              424069,      2.16,              106017,               21834,              337816
+                    clBuildProgram,           1,              239573,      1.22,              239573,              239573,              239573
+                clReleaseMemObject,          12,              124560,      0.64,               10380,                5409,               27848
+                    clCreateBuffer,          12,              117285,      0.60,                9773,                3705,               29603
+           clGetEventProfilingInfo,           8,               19752,      0.10,                2469,                 124,                6618
+                  clReleaseProgram,           1,               14679,      0.07,               14679,               14679,               14679
+                   clCreateContext,           1,               14134,      0.07,               14134,               14134,               14134
 ...
 ```
 **Device Timing** mode collects duration for each kernel on the device and provides the summary for the whole application:
 ```
 === Device Timing Results: ===
 
-             Total Execution Time (ns):            375937416
+             Total Execution Time (ns):             31991623
 Total Device Time for CPU backend (ns):                    0
-Total Device Time for GPU backend (ns):            176740729
+Total Device Time for GPU backend (ns):             16291520
 
 == GPU Backend: ==
 
-              Kernel,       Calls,           Time (ns),  Time (%),        Average (ns),            Min (ns),            Max (ns)
-                GEMM,           4,           171231415,     96.88,            42807853,            42778416,            42843666
-clEnqueueWriteBuffer,           8,             3256330,      1.84,              407041,              287916,              548416
- clEnqueueReadBuffer,           4,             2252984,      1.27,              563246,              558973,              567022
+              Kernel,       Calls,           Time (ns),    Time (%),        Average (ns),            Min (ns),            Max (ns)
+                GEMM,           4,            13355520,       81.98,             3338880,             3336960,             3341600
+clEnqueueWriteBuffer,           8,             1985680,       12.19,              248210,              195280,              305040
+ clEnqueueReadBuffer,           4,              950320,        5.83,              237580,              204160,              337760
 ```
 **Kernel Submission** mode collects queued, submit and execute intervals for kernels and memory transfers:
 ```
 === Kernel Submission Results: ===
 
-             Total Execution Time (ns):            424658735
+             Total Execution Time (ns):             33519364
 Total Device Time for CPU backend (ns):                    0
-Total Device Time for GPU backend (ns):            171493149
+Total Device Time for GPU backend (ns):             17123360
 
 == GPU Backend: ==
 
               Kernel,       Calls,         Queued (ns),  Queued (%),         Submit (ns),  Submit (%),        Execute (ns), Execute (%),
-                GEMM,           4,               61975,       20.61,             2076275,       39.43,           166183665,       96.90,
-clEnqueueWriteBuffer,           8,              231249,       76.92,             3181001,       60.41,             3032164,        1.77,
- clEnqueueReadBuffer,           4,                7422,        2.47,                8694,        0.17,             2277320,        1.33,
+                GEMM,           4,              245414,       53.90,             1562800,       60.35,            13352000,       77.98,
+clEnqueueWriteBuffer,           8,              199453,       43.80,              991840,       38.30,             2412880,       14.09,
+ clEnqueueReadBuffer,           4,               10458,        2.30,               35120,        1.36,             1358480,        7.93,
 ```
 **Verbose** mode provides additional information per kernel (SIMD width, global and local sizes) and per transfer (bytes transferred). This option should be used in addition to others, e.g. for **Device Timing** mode one can get:
 ```
 === Device Timing Results: ===
 
-             Total Execution Time (ns):            377460265
+             Total Execution Time (ns):             33413781
 Total Device Time for CPU backend (ns):                    0
-Total Device Time for GPU backend (ns):            177372573
+Total Device Time for GPU backend (ns):             17132560
 
 == GPU Backend: ==
 
-                                  Kernel,       Calls,           Time (ns),  Time (%),        Average (ns),            Min (ns),            Max (ns)
-GEMM[SIMD32, {1024, 1024, 1}, {0, 0, 0}],           4,           171844666,     96.88,            42961166,            42911500,            43056666
-     clEnqueueWriteBuffer[4194304 bytes],           8,             3166997,      1.79,              395874,              308666,              551833
-      clEnqueueReadBuffer[4194304 bytes],           4,             2360910,      1.33,              590227,              568817,              617947
+                                                 Kernel,       Calls,           Time (ns),    Time (%),        Average (ns),            Min (ns),            Max (ns)
+                 GEMM[SIMD32 {1024; 1024; 1} {0; 0; 0}],           4,            13356000,       77.96,             3339000,             3336960,             3340480
+clEnqueueWriteBufferclEnqueueWriteBuffer[4194304 bytes],           8,             2417440,       14.11,              302180,              299520,              304880
+  clEnqueueReadBufferclEnqueueReadBuffer[4194304 bytes],           4,             1359120,        7.93,              339780,              338960,              340880
 ```
 
 **Device Timeline** mode dumps four timestamps for each device activity - *queued* to the host command queue, *submit* to device queue, *start* and *end* on the device (all the timestamps are in CPU nanoseconds):
 ```
-...
-Device Timeline (queue: 0x55a9c7e51e70): clEnqueueWriteBuffer [ns] = 317341082 (queued) 317355010 (submit) 317452332 (start) 317980165 (end)
-Device Timeline (queue: 0x55a9c7e51e70): clEnqueueWriteBuffer [ns] = 317789774 (queued) 317814558 (submit) 318160607 (start) 318492690 (end)
-Device Timeline (queue: 0x55a9c7e51e70): GEMM [ns] = 318185764 (queued) 318200629 (submit) 318550014 (start) 361260930 (end)
-Device Timeline (queue: 0x55a9c7e51e70): clEnqueueReadBuffer [ns] = 361479600 (queued) 361481387 (submit) 361482574 (start) 362155593 (end)
+Device Timeline: start time (CLOCK_MONOTONIC_RAW) [ns] = 63844238092827
+Device Timeline: start time (CLOCK_MONOTONIC) [ns] = 63851746238618
+Device Timeline: start time (CLOCK_REALTIME) [ns] = 1794831370430361998
+Device Timeline (queue: 0x5b54c947b270): clEnqueueWriteBuffer<1> [ns] = 7534241 (queued) 7712661 (submit) 7926421 (start) 8225461 (end)
+Device Timeline (queue: 0x5b54c947b270): clEnqueueWriteBuffer<2> [ns] = 8077003 (queued) 8081018 (submit) 8230698 (start) 8534058 (end)
+Device Timeline (queue: 0x5b54c947b270): GEMM<3> [ns] = 8125706 (queued) 8350948 (submit) 8535268 (start) 11879268 (end)
+Device Timeline (queue: 0x5b54c947b270): clEnqueueReadBuffer<4> [ns] = 12157851 (queued) 12162176 (submit) 12173456 (start) 12511616 (end)
+Device Timeline (queue: 0x5b54c947b270): clEnqueueWriteBuffer<5> [ns] = 14352049 (queued) 14357666 (submit) 14385106 (start) 14690146 (end)
+Device Timeline (queue: 0x5b54c947b270): clEnqueueWriteBuffer<6> [ns] = 14493360 (queued) 14494773 (submit) 14692693 (start) 14994693 (end)
 ...
 ```
-**Chrome Device Timeline** mode dumps timestamps for device activities per command queue to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool) browser tool. Can't be used with **Chrome Kernel Timeline** and **Chrome Device Stages**.
+**Chrome Device Timeline** mode dumps timestamps for device activities per command queue to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/) browser tool. Can't be used with **Chrome Kernel Timeline** and **Chrome Device Stages**.
 
-**Chrome Kernel Timeline** mode dumps timestamps for device activities per kernel name to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool) browser tool. Can't be used with **Chrome Device Timeline**.
+**Chrome Kernel Timeline** mode dumps timestamps for device activities per kernel name to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/) browser tool. Can't be used with **Chrome Device Timeline**.
 
 **Chrome Device Stages** mode provides alternative view for device queue where each kernel invocation is divided into stages: "queued", "sumbitted" and "execution". Can't be used with **Chrome Device Timeline**.
 
@@ -134,15 +144,19 @@ All the API calls and kernels, which submission happens while collection disable
 
 ## Supported OS
 - Linux
-- Windows
+- Windows (not validated)
+
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); on CPU, with the Intel(R) OpenCL(TM) CPU runtime of oneAPI 2026.2; other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
 
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
+- [Python](https://www.python.org/) (version 3.9 and above)
 - [OpenCL(TM) ICD Loader](https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime) to run on GPU
-- [Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes](https://software.intel.com/en-us/articles/opencl-drivers#cpu-section) to run on CPU
+- [Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes](https://www.intel.com/content/www/us/en/developer/articles/tool/opencl-drivers.html#cpu-section) to run on CPU
 
 **OpenCL tracing extension:** OpenCL tracing uses the Intel tracing extension (`clCreateTracingHandleINTEL` and related functions), which the tool looks up with `clGetExtensionFunctionAddressForPlatform`. It isn't listed in the device extension strings. The Intel OpenCL runtimes for GPU (compute-runtime, checked with 25.18 and 26.05) and for CPU provide it. With a runtime that doesn't, the tool prints `[WARNING] The OpenCL runtime does not provide the Intel tracing extension (clCreateTracingHandleINTEL)` and collects no OpenCL data.
 
