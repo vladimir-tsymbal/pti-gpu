@@ -1357,8 +1357,9 @@ class Finalizer {
                           const std::pair<uint64_t, uint64_t>& b) {
                          return a.second > b.second;
                        });
-      if (hot_list.size() > kStallHotInstructionCount) {
-        hot_list.resize(kStallHotInstructionCount);
+      uint32_t hot_count = options_.GetHotInstructionCount();
+      if (hot_count > 0 && hot_list.size() > hot_count) {
+        hot_list.resize(hot_count);
       }
 
       logger_.Log("\n");

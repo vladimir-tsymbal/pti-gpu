@@ -49,6 +49,10 @@ void Usage() {
     "Collect EU stall sampling: stall reasons for each kernel and its hottest instructions (Level Zero and OpenCL kernels)" <<
     std::endl;
   std::cout <<
+    "--hot-instructions <N>           " <<
+    "Hottest instructions listed per kernel with -e (default is 10, 0 lists all)" <<
+    std::endl;
+  std::cout <<
     "--device [-d] <ID>               " <<
     "Target device for profiling (default is 0)" <<
     std::endl;
@@ -208,6 +212,22 @@ int ParseArgs(int argc, char* argv[]) {
       }
       utils::SetEnv("ONEPROF_SamplingInterval", argv[i]);
       app_index += 2;
+    } else if (strcmp(argv[i], "--hot-instructions") == 0) {
+      ++i;
+      if (i >= argc) {
+        std::cout << "[ERROR] Hot instruction count is not specified" <<
+          std::endl;
+        return -1;
+      }
+      std::string count(argv[i]);
+      if (count.empty() || count.size() > 9 ||
+          count.find_first_not_of("0123456789") != std::string::npos) {
+        std::cerr << "[ERROR] Invalid hot instruction count: " << count <<
+          std::endl;
+        exit(EXIT_FAILURE);
+      }
+      utils::SetEnv("ONEPROF_HotInstructions", argv[i]);
+      app_index += 2;
     } else if (strcmp(argv[i], "--output") == 0 ||
                strcmp(argv[i], "-o") == 0) {
       ++i;
@@ -285,6 +305,15 @@ int ParseArgs(int argc, char* argv[]) {
     }
   }
 
+  // The count is used when the stall sampling report is printed: after an -e
+  // run, or with -e -f for an -e result file.
+  if (!utils::GetEnv("ONEPROF_HotInstructions").empty() &&
+      utils::GetEnv("ONEPROF_StallSampling") != "1") {
+    std::cerr << "[ERROR] --hot-instructions can only be used with " <<
+      "stall sampling (-e)" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   if (finalization) {
     Finalize();
     return 0;
@@ -319,6 +348,7 @@ static ProfOptions ReadArgs() {
   std::string log_file;
   std::string raw_data_path;
   std::string result_file;
+  uint32_t hot_instruction_count = kStallHotInstructionCount;
 
   value = utils::GetEnv("ONEPROF_RawMetrics");
   if (!value.empty()) {
@@ -387,6 +417,11 @@ static ProfOptions ReadArgs() {
     sampling_interval *= 1000;
   }
 
+  value = utils::GetEnv("ONEPROF_HotInstructions");
+  if (!value.empty()) {
+    hot_instruction_count = std::stoul(value);
+  }
+
   if (result_file.empty()) {
     result_file = ResultStorage::GetResultFileName(
         raw_data_path, utils::GetPid());
@@ -395,7 +430,7 @@ static ProfOptions ReadArgs() {
 
   return ProfOptions(
       flags, device_id, sampling_interval, metric_group,
-      log_file, raw_data_path, result_file);
+      log_file, raw_data_path, result_file, hot_instruction_count);
 }
 
 void EnableProfiling() {
