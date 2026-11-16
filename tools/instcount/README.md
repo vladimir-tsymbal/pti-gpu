@@ -108,7 +108,7 @@ The following capabilities are available:
 
 ### Linux
 
-CMake downloads GT Pin 4.6.4 automatically. If the download fails (for example, behind a proxy), get the package from the [GT Pin 4.6.4 download page](https://www.intel.com/content/www/us/en/download/730596/867025/gtpin.html), unpack it and pass `-DGTPIN_PATH=<gtpin>`, the directory that contains `Lib` and `Include`. Use `-DGTPIN_LINK=<url>` to download another package, and `-DGTPIN_DOWNLOAD_INACTIVITY_TIMEOUT=<seconds>` (default 60) or `-DGTPIN_DOWNLOAD_TIMEOUT=<seconds>` (default 900) to change when a stalled download gives up.
+CMake downloads GT Pin 5.0.0 automatically. If the download fails (for example, behind a proxy), get the package from the [GT Pin 5.0.0 download page](https://www.intel.com/content/www/us/en/download/730596/924057/gtpin.html), unpack it and pass `-DGTPIN_PATH=<gtpin>`, the directory that contains `Lib` and `Include`. Use `-DGTPIN_LINK=<url>` to download another package, and `-DGTPIN_DOWNLOAD_INACTIVITY_TIMEOUT=<seconds>` (default 60) or `-DGTPIN_DOWNLOAD_TIMEOUT=<seconds>` (default 900) to change when a stalled download gives up.
 
 Run the following commands to build the sample:
 

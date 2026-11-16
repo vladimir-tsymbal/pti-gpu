@@ -7,6 +7,7 @@ from samples import cl_gemm
 from samples import ze_gemm
 import utils
 import json
+import re
 
 def config(path):
   cmake = ["cmake",\
@@ -211,7 +212,11 @@ def parseJsonResults(stderr) -> dict:
   data = {}
   data['kernels'] = {}
   try:
-    jsonData = json.loads(stderr)
+    # GTPin may print diagnostics (e.g. "GTPin WARNING: L0 function ... is
+    # not found" with older loaders) before the JSON document.
+    jsonText = "\n".join(line for line in stderr.split("\n")
+                         if not line.startswith("GTPin "))
+    jsonData = json.loads(jsonText)
     for k in jsonData['kernels']:
       data['kernels'][k['kernel_name']] = {}
       d = data['kernels'][k['kernel_name']]
@@ -225,6 +230,26 @@ def parseJsonResults(stderr) -> dict:
   except json.JSONDecodeError:
     return {}
   return data
+
+def checkGemmData(stderr, data):
+  """Returns an error unless the GEMM kernel ran and has memory access data.
+
+  GTPin reports kernels it saw but never counted as "runs 0 times" with no
+  data (e.g. GTPin before 4.7.2 with the SYCL Level Zero v2 adapter)."""
+  for name, value in data['kernels'].items():
+    if name.find("GEMM") == -1 or not value:
+      continue
+    match = re.search(r"^=== " + re.escape(name) + r" \(runs (\d+) times\)",
+                      stderr, re.M)
+    if match is None or int(match.group(1)) > 0:
+      return None
+  return "No memory access data for the GEMM kernel:\n" + stderr
+
+def checkGemmJsonData(data):
+  for name, value in data['kernels'].items():
+    if name.find("GEMM") != -1 and value:
+      return None
+  return "No memory access data for the GEMM kernel in the JSON output"
 
 def isValidOutput(stdout, stderr):
   if not stdout:
@@ -246,6 +271,8 @@ def run(path, option):
   dataTxt = parseTxtResults(stderr)
   # smoke test
   if len(dataTxt.keys()) == 0: return "No data found in the output"
+  res = checkGemmData(stderr, dataTxt)
+  if res != None: return res
 
 
   command = getTestAppCommand(option, ['--json-output'], baseSize * 1, TWO_RUNS)
@@ -254,6 +281,8 @@ def run(path, option):
   if res != None: return res
   dataJson = parseJsonResults(stderr)
   if len(dataJson.keys()) == 0: return "No data found in the output"
+  res = checkGemmJsonData(dataJson)
+  if res != None: return res
 
   # The checks below need correct SIMD active lanes, which are not calculated
   # reliably yet, so they run only with PTI_MEMACCESS_CONSISTENCY_CHECKS=1.
