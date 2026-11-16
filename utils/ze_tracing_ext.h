@@ -40,7 +40,11 @@
 
 // zeCommandListAppendLaunchKernelWithArguments and its tracing types come
 // with the L0 1.14 headers. With older system headers (e.g. libze-dev 1.24,
-// API 1.13) the collectors build without the hook.
+// API 1.13) the collectors build without the hook, so they miss the kernels
+// of a runtime that launches with it (the SYCL Level Zero v2 adapter). Such a
+// runtime needs a loader that supports the API, which comes with 1.14+
+// headers: build against those (or the fetched headers) instead of
+// redeclaring the types here.
 #if defined(ZE_API_VERSION_CURRENT_M) && \
     ZE_API_VERSION_CURRENT_M >= ZE_MAKE_VERSION(1, 14)
 #define PTI_ZE_LAUNCH_WITH_ARGUMENTS 1
