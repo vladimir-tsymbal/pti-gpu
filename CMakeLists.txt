@@ -108,7 +108,8 @@ if(WIN32)
   set(PTI_GPU_IGA_LIB ON)
 else()
   find_program(PTI_GPU_ICPX icpx)
-  find_library(PTI_GPU_IGA_LIB NAMES iga64)
+  # The versioned names: IGC packages may install no libiga64.so symlink.
+  find_library(PTI_GPU_IGA_LIB NAMES iga64 libiga64.so.2 libiga64.so.1)
 endif()
 
 # Settings forwarded to each sub-project when they are set here.
