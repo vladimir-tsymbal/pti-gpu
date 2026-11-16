@@ -607,7 +607,7 @@ class ClKernelCollector {
 
     uint64_t mask;
     uint64_t freq;
-    if (device = device_) {
+    if (device == device_) {
       ze_device = ze_device_;
       mask = timer_mask_;
       freq = timer_freq_;
@@ -687,9 +687,8 @@ class ClKernelCollector {
             kernel_interval_list_.push_back(kernel_interval);
             return;
           }
-
-          PTI_ASSERT(0);
         }
+        PTI_ASSERT(0); // The sub-device must be one of its parent's
       } else { // Device with no subdevices
         PTI_ASSERT(device_map_[device].empty());
         ClKernelInterval kernel_interval{
