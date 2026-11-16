@@ -40,6 +40,10 @@ def run(path, option):
     app_file = os.path.join(app_folder, "dpc_gemm")
     command = ["./oneprof", option, app_file, "gpu", "1024", "1"]
   stdout, stderr = utils.run_process(command, path)
+  if option == "-e" and stderr.find(
+      "Metric group EuStallSampling is not available") != -1:
+    utils.skip("no EuStallSampling metric group on the device " +
+               "(not supported, or metric streams not allowed)")
   if not stdout:
     return "stdout is empty"
   if not stderr:
@@ -48,6 +52,25 @@ def run(path, option):
     return stdout
   if stderr.find("WARNING") != -1:
     return stderr
+  if option == "-e":
+    return check_stall_sampling(stderr)
+  return None
+
+# -e: the GEMM kernel has a row in the stall table with samples, and a hot
+# instruction list (the disassembly in it needs IGA, so it isn't checked).
+# oneprof prints its report to stderr unless -o is given.
+def check_stall_sampling(report):
+  if report.find("== EU Stall Sampling ==") == -1:
+    return report
+  for line in report.splitlines():
+    fields = line.split(",")
+    if len(fields) > 2 and fields[0].find("GEMM") != -1 and \
+        fields[1].isdigit() and int(fields[1]) > 0:
+      break
+  else:
+    return "no EU stall samples for the GEMM kernel:\n" + report
+  if report.find("== Hot Instructions: ") == -1:
+    return report
   return None
 
 def main(option):
@@ -85,6 +108,8 @@ if __name__ == "__main__":
     option = "-a"
   if len(sys.argv) > 1 and sys.argv[1] == "-q":
     option = "-q"
+  if len(sys.argv) > 1 and sys.argv[1] == "-e":
+    option = "-e"
   if len(sys.argv) > 1 and sys.argv[1] == "cl":
     option = "cl"
   if len(sys.argv) > 1 and sys.argv[1] == "ze":

@@ -231,8 +231,9 @@ Options:
 
 Samples that need `icpx` (DPC++ and OpenMP) are skipped automatically if the
 compiler is not found, and the `*_debug_info` samples are skipped if the IGA
-library (`libiga64.so`) is not found. `instcount` and `memaccess` download
-GT Pin at configure time.
+library (`libiga64.so`) is not found (`oneprof` is then built without the
+instruction disassembly of `--stall-sampling`). `instcount` and `memaccess`
+download GT Pin at configure time.
 
 Per-tool packages can be created with CPack, e.g.:
 

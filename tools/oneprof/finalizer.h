@@ -7,6 +7,13 @@
 #ifndef PTI_TOOLS_ONEPROF_FINALIZER_H_
 #define PTI_TOOLS_ONEPROF_FINALIZER_H_
 
+#include <algorithm>
+#include <iomanip>
+#include <map>
+
+#if defined(PTI_ONEPROF_IGA)
+#include "gen_binary_decoder.h"
+#endif
 #include "logger.h"
 #include "metric_storage.h"
 #include "prof_options.h"
@@ -61,7 +68,8 @@ class Finalizer {
 
     if (options_.CheckFlag(PROF_RAW_METRICS) ||
         options_.CheckFlag(PROF_KERNEL_METRICS) ||
-        options_.CheckFlag(PROF_AGGREGATION)) {
+        options_.CheckFlag(PROF_AGGREGATION) ||
+        options_.CheckFlag(PROF_STALL_SAMPLING)) {
       bool are_metrics_found = ComputeMetrics();
       if (!are_metrics_found) {
         std::cerr << "[WARNING] No metric results found" << std::endl;
@@ -85,6 +93,10 @@ class Finalizer {
 
     if (options_.CheckFlag(PROF_AGGREGATION)) {
       ReportAggregatedMetrics(cache);
+    }
+
+    if (options_.CheckFlag(PROF_STALL_SAMPLING)) {
+      ReportStallSampling();
     }
 
     if (options_.CheckFlag(PROF_KERNEL_QUERY)) {
@@ -1045,6 +1057,337 @@ class Finalizer {
     }
 
     delete reader;
+  }
+
+  static uint64_t GetTypedValue(const zet_typed_value_t& typed_value) {
+    switch (typed_value.type) {
+      case ZET_VALUE_TYPE_UINT32:
+        return typed_value.value.ui32;
+      case ZET_VALUE_TYPE_UINT64:
+        return typed_value.value.ui64;
+      case ZET_VALUE_TYPE_FLOAT32:
+        return static_cast<uint64_t>(typed_value.value.fp32);
+      case ZET_VALUE_TYPE_FLOAT64:
+        return static_cast<uint64_t>(typed_value.value.fp64);
+      case ZET_VALUE_TYPE_BOOL8:
+        return typed_value.value.b8;
+      default:
+        PTI_ASSERT(0);
+        return 0;
+    }
+  }
+
+  static uint64_t Sum(const std::vector<uint64_t>& value_list) {
+    uint64_t sum = 0;
+    for (uint64_t value : value_list) {
+      sum += value;
+    }
+    return sum;
+  }
+
+  static void PrintPercent(
+      std::stringstream& stream, uint64_t value, uint64_t total) {
+    stream << std::fixed << std::setprecision(2) <<
+      (total == 0 ? 0.0 : 100.0 * value / total);
+  }
+
+#if defined(PTI_ONEPROF_IGA)
+  // IGA platform of the device: only the GPUs EU stall sampling was checked
+  // on. Others get no disassembly.
+  static iga_gen_t GetIgaGen(ze_device_handle_t device) {
+    PTI_ASSERT(device != nullptr);
+    ze_device_ip_version_ext_t ip_version{
+        ZE_STRUCTURE_TYPE_DEVICE_IP_VERSION_EXT, nullptr, 0};
+    ze_device_properties_t props{
+        ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES, &ip_version};
+    if (zeDeviceGetProperties(device, &props) != ZE_RESULT_SUCCESS) {
+      return IGA_GEN_INVALID;
+    }
+    uint32_t architecture = ip_version.ipVersion >> 22;
+    uint32_t release = (ip_version.ipVersion >> 14) & 0xff;
+    if (architecture == 12 && (release == 60 || release == 61)) {
+      return IGA_XE_HPC;  // Data Center GPU Max (PVC)
+    }
+    if (architecture == 20) {
+      return static_cast<iga_gen_t>(XE_VER(2, 0));  // IGA_XE2: BMG, LNL
+    }
+    return IGA_GEN_INVALID;
+  }
+#endif
+
+  // Instruction text by byte offset in the kernel; empty if there is no
+  // disassembly (no IGA in the build, unknown device, no ISA).
+  static std::map<uint64_t, std::string> Disassemble(
+      ze_device_handle_t device, const std::vector<uint8_t>& binary,
+      std::string* reason) {
+    PTI_ASSERT(reason != nullptr);
+    std::map<uint64_t, std::string> instruction_map;
+#if defined(PTI_ONEPROF_IGA)
+    if (binary.empty()) {
+      *reason = "the driver gave no kernel ISA";
+      return instruction_map;
+    }
+    iga_gen_t arch = GetIgaGen(device);
+    if (arch == IGA_GEN_INVALID) {
+      *reason = "the device is not supported";
+      return instruction_map;
+    }
+    GenBinaryDecoder decoder(binary, arch);
+    for (const auto& instruction : decoder.Disassemble()) {
+      // IGA pads its columns: one space between the fields is enough here.
+      std::string text;
+      for (char c : instruction.text) {
+        if (c != ' ' || (!text.empty() && text.back() != ' ')) {
+          text += c;
+        }
+      }
+      while (!text.empty() && text.back() == ' ') {
+        text.pop_back();
+      }
+      instruction_map[instruction.offset] = text;
+    }
+    if (instruction_map.empty()) {
+      *reason = "IGA could not decode the kernel ISA";
+    }
+#else
+    (void)device;
+    (void)binary;
+    *reason = "oneprof was built without IGA";
+#endif
+    return instruction_map;
+  }
+
+  // EU stall sampling (-e): the stream holds one report per sampled IP, with
+  // the number of samples per stall reason. Reports are summed per IP, and IPs
+  // are mapped to kernels by their GPU address range (IP is in 8-byte units of
+  // the low 32 address bits).
+  void ReportStallSampling() {
+    PTI_ASSERT(data_ != nullptr);
+
+    ze_device_handle_t device = GetZeDevice(data_->device_id);
+    PTI_ASSERT(device != nullptr);
+
+    std::vector<ze_device_handle_t> sub_device_list =
+      utils::ze::GetSubDeviceList(device);
+    if (sub_device_list.empty()) {
+      sub_device_list.push_back(device);
+    }
+
+    std::string filename = options_.GetResultFile();
+    PTI_ASSERT(!filename.empty());
+    std::string path = utils::GetFilePath(filename);
+
+    MetricReader* reader = MetricReader::Create(
+        sub_device_list.size(), data_->pid, "bin", path);
+    PTI_ASSERT(reader != nullptr);
+
+    std::vector<std::string> reason_list;
+    std::map<uint64_t, std::vector<uint64_t> > ip_map;
+    for (size_t i = 0; i < sub_device_list.size(); ++i) {
+      zet_metric_group_handle_t group = utils::ze::FindMetricGroup(
+          sub_device_list[i], data_->metric_group,
+          ZET_METRIC_GROUP_SAMPLING_TYPE_FLAG_TIME_BASED);
+      PTI_ASSERT(group != nullptr);
+
+      uint32_t report_size = GetMetricCount(group);
+      std::vector<std::string> metric_list = GetMetricList(group);
+      PTI_ASSERT(metric_list.size() == report_size);
+
+      size_t ip_id = GetMetricId(metric_list, "IP");
+      if (ip_id >= metric_list.size()) {
+        std::cerr << "[ERROR] Metric group " << data_->metric_group <<
+          " has no IP metric" << std::endl;
+        delete reader;
+        return;
+      }
+
+      std::vector<std::string> sub_device_reason_list;
+      for (size_t k = 0; k < metric_list.size(); ++k) {
+        if (k != ip_id) {
+          sub_device_reason_list.push_back(
+              metric_list[k].substr(0, metric_list[k].find('[')));
+        }
+      }
+      if (reason_list.empty()) {
+        reason_list = sub_device_reason_list;
+      }
+      PTI_ASSERT(reason_list == sub_device_reason_list);
+
+      while (true) {
+        uint32_t report_size_in_bytes = report_size * sizeof(zet_typed_value_t);
+        uint32_t report_chunk_size = report_size_in_bytes * MAX_REPORT_COUNT;
+        zet_typed_value_t* report_chunk = reinterpret_cast<zet_typed_value_t*>(
+            reader->ReadChunk(report_chunk_size, i));
+        if (report_chunk == nullptr) {
+          break;
+        }
+
+        uint32_t report_count = report_chunk_size / report_size_in_bytes;
+        PTI_ASSERT(report_count * report_size_in_bytes == report_chunk_size);
+
+        for (uint32_t j = 0; j < report_count; ++j) {
+          const zet_typed_value_t* report = report_chunk + j * report_size;
+          uint64_t ip = GetTypedValue(report[ip_id]);
+          std::vector<uint64_t>& value_list = ip_map[ip];
+          value_list.resize(reason_list.size(), 0);
+          for (size_t k = 0, r = 0; k < report_size; ++k) {
+            if (k != ip_id) {
+              value_list[r++] += GetTypedValue(report[k]);
+            }
+          }
+        }
+
+        delete[] report_chunk;
+      }
+    }
+    delete reader;
+
+    // Kernel address ranges, sorted; a kernel without ISA (size unknown)
+    // reaches up to the next one.
+    struct StallKernel {
+      std::string name;
+      uint64_t start;
+      uint64_t end;
+      const std::vector<uint8_t>* binary;
+      std::vector<uint64_t> total_list;
+      std::map<uint64_t, std::vector<uint64_t> > offset_map;
+    };
+    const uint64_t kAddressMask = 0xFFFFFFFFull;
+    std::vector<StallKernel> kernel_list;
+    for (const auto& kernel_isa : data_->kernel_isa_list) {
+      uint64_t start = kernel_isa.base_address & kAddressMask;
+      kernel_list.push_back(
+          {kernel_isa.name, start, start + kernel_isa.binary.size(),
+           &kernel_isa.binary, {}, {}});
+    }
+    std::sort(kernel_list.begin(), kernel_list.end(),
+              [](const StallKernel& a, const StallKernel& b) {
+                return a.start < b.start;
+              });
+    for (size_t i = 0; i < kernel_list.size(); ++i) {
+      uint64_t next = (i + 1 < kernel_list.size()) ?
+        kernel_list[i + 1].start : kAddressMask + 1;
+      if (kernel_list[i].binary->empty() || kernel_list[i].end > next) {
+        kernel_list[i].end = next;
+      }
+    }
+
+    StallKernel unknown{"<unknown>", 0, 0, nullptr, {}, {}};
+    for (const auto& ip : ip_map) {
+      uint64_t address = (ip.first << 3) & kAddressMask;
+      StallKernel* kernel = &unknown;
+      for (auto& candidate : kernel_list) {
+        if (address >= candidate.start && address < candidate.end) {
+          kernel = &candidate;
+          break;
+        }
+      }
+      uint64_t offset = (kernel == &unknown) ? address : address - kernel->start;
+      std::vector<uint64_t>& offset_value_list = kernel->offset_map[offset];
+      offset_value_list.resize(reason_list.size(), 0);
+      kernel->total_list.resize(reason_list.size(), 0);
+      for (size_t r = 0; r < reason_list.size(); ++r) {
+        offset_value_list[r] += ip.second[r];
+        kernel->total_list[r] += ip.second[r];
+      }
+    }
+
+    std::vector<StallKernel*> sampled_list;
+    for (auto& kernel : kernel_list) {
+      if (Sum(kernel.total_list) > 0) {
+        sampled_list.push_back(&kernel);
+      }
+    }
+    std::stable_sort(sampled_list.begin(), sampled_list.end(),
+                     [](const StallKernel* a, const StallKernel* b) {
+                       return Sum(a->total_list) > Sum(b->total_list);
+                     });
+    if (Sum(unknown.total_list) > 0) {
+      sampled_list.push_back(&unknown);
+    }
+
+    logger_.Log("\n");
+    logger_.Log("== EU Stall Sampling ==\n");
+    logger_.Log("\n");
+
+    if (data_->kernel_isa_list.empty()) {
+      std::cerr << "[WARNING] No Level Zero kernels were recorded: " <<
+        "all samples are reported as <unknown>" << std::endl;
+    }
+
+    std::stringstream header;
+    header << "Kernel,Samples,";
+    for (const auto& reason : reason_list) {
+      header << reason << "[%],";
+    }
+    header << std::endl;
+    logger_.Log(header.str());
+
+    for (const StallKernel* kernel : sampled_list) {
+      uint64_t total = Sum(kernel->total_list);
+      std::stringstream line;
+      line << kernel->name << "," << total << ",";
+      for (uint64_t value : kernel->total_list) {
+        PrintPercent(line, value, total);
+        line << ",";
+      }
+      line << std::endl;
+      logger_.Log(line.str());
+    }
+
+    std::string no_disassembly_reason;
+    for (const StallKernel* kernel : sampled_list) {
+      if (kernel == &unknown) {
+        continue;
+      }
+
+      std::string reason;
+      std::map<uint64_t, std::string> instruction_map =
+        Disassemble(device, *(kernel->binary), &reason);
+      if (instruction_map.empty() && no_disassembly_reason.empty()) {
+        no_disassembly_reason = reason;
+      }
+
+      std::vector<std::pair<uint64_t, uint64_t> > hot_list;  // offset, samples
+      for (const auto& offset : kernel->offset_map) {
+        hot_list.push_back({offset.first, Sum(offset.second)});
+      }
+      std::stable_sort(hot_list.begin(), hot_list.end(),
+                       [](const std::pair<uint64_t, uint64_t>& a,
+                          const std::pair<uint64_t, uint64_t>& b) {
+                         return a.second > b.second;
+                       });
+      if (hot_list.size() > kStallHotInstructionCount) {
+        hot_list.resize(kStallHotInstructionCount);
+      }
+
+      logger_.Log("\n");
+      logger_.Log("== Hot Instructions: " + kernel->name + " ==\n");
+      logger_.Log("\n");
+      logger_.Log("Offset,Samples,Top Reason,Instruction,\n");
+
+      for (const auto& hot : hot_list) {
+        const std::vector<uint64_t>& value_list =
+          kernel->offset_map.at(hot.first);
+        size_t top = std::max_element(value_list.begin(), value_list.end()) -
+          value_list.begin();
+
+        std::stringstream line;
+        line << "0x" << std::hex << hot.first << std::dec << "," <<
+          hot.second << "," << reason_list[top] << ",";
+        auto instruction = instruction_map.find(hot.first);
+        if (instruction != instruction_map.end()) {
+          line << "\"" << instruction->second << "\"";
+        }
+        line << "," << std::endl;
+        logger_.Log(line.str());
+      }
+    }
+
+    if (!no_disassembly_reason.empty()) {
+      std::cerr << "[INFO] No instruction disassembly: " <<
+        no_disassembly_reason << std::endl;
+    }
   }
 
   void ReportQueryMetrics() {

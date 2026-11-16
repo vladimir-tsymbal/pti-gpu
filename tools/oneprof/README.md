@@ -11,6 +11,7 @@ Options:
 --kernel-metrics [-k]            Collect over-time metrics for each kernel instance
 --aggregation [-a]               Collect aggregated metrics for each kernel instance in time-based mode
 --kernel-query [-q]              Collect aggregated metrics for each kernel instance in query-based mode
+--stall-sampling [-e]            Collect EU stall sampling: stall reasons for each kernel and its hottest instructions (Level Zero kernels)
 --device [-d] <ID>               Target device for profiling (default is 0)
 --group [-g] <NAME>              Target metric group to collect (default is ComputeBasic)
 --sampling-interval [-s] <VALUE> Sampling interval for metrics collection in us (default is 1000 us)
@@ -87,6 +88,27 @@ Group 1: ComputeBasic (ComputeBasic)
     ...
 ```
 
+**EU Stall Sampling** mode (`-e`) samples the instruction pointers of the EU threads and the reason each thread is stalled (the time-based `EuStallSampling` metric group). The samples are summed for each kernel, with each stall reason as a percentage of the kernel's samples, and for each kernel's ten hottest instructions (the offset in the kernel, the most frequent reason, and the instruction disassembled with IGA), e.g. for [ze_gemm](../../samples/ze_gemm) on Intel(R) Arc(TM) B570 Graphics:
+```
+== EU Stall Sampling ==
+
+Kernel,Samples,Active[%],PSDepStall[%],ControlStall[%],PipeStall[%],SendStall[%],DistStall[%],SbidStall[%],SyncStall[%],InstrFetchStall[%],OtherStall[%],
+GEMM,5182,53.88,0.00,0.68,25.30,0.00,3.55,14.90,0.00,1.68,0.02,
+<unknown>,658,0.46,0.00,0.00,0.15,0.00,0.15,99.09,0.00,0.15,0.00,
+
+== Hot Instructions: GEMM ==
+
+Offset,Samples,Top Reason,Instruction,
+0x2c8,772,SbidStall,"sync.nop null {Compacted,$4.dst}",
+0x210,274,Active,"mov (16|M16) r42.0<2>:ud r17.0<1;1,0>:ud {Compacted}",
+0x2b8,273,Active,"(W) cmp (32|M0) (lt)f1.0 null<1>:d r4.8<0;1,0>:d r5.4<0;1,0>:d {I@1}",
+...
+```
+- Only kernels created through Level Zero (including DPC++ and OpenMP offload on Level Zero) are mapped; samples in other code (OpenCL kernels, kernels the runtime creates internally) are reported as `<unknown>`.
+- `-e` always uses the `EuStallSampling` group and can be combined with `-m` (raw stall reports) and `-i`, not with `-k`, `-a`, `-q` or another `-g`. `-s` sets the sampling interval.
+- The group exists on both tested GPUs. With the xe kernel driver it is listed only when `/proc/sys/dev/xe/observation_paranoid` is 0; if the device has no such group, oneprof lists the available groups and exits.
+- The instruction disassembly needs the IGA library (`libiga64`, part of the compute runtime) at build time; without it (and on Windows) the `Instruction` column is empty.
+
 ## Supported OS
 - Linux
 - Windows (*under development*)
@@ -111,6 +133,7 @@ Group 1: ComputeBasic (ComputeBasic)
         echo 0 | sudo tee /proc/sys/dev/xe/observation_paranoid    # xe kernel driver (e.g. BMG)
         ```
 - [Metrics Library for Metrics Discovery API (Metrics Library for MD API)](https://github.com/intel/metrics-library)
+- Optional, for the instruction disassembly in `--stall-sampling` (Linux): the IGA library (`libiga64`) of the [Intel(R) Graphics Compiler](https://github.com/intel/intel-graphics-compiler); the IGA headers are downloaded at build time if they are not installed
 
 ## Build and Run
 ### Linux

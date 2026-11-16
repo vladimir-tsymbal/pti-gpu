@@ -45,6 +45,10 @@ void Usage() {
     "Collect aggregated metrics for each kernel instance in query-based mode" <<
     std::endl;
   std::cout <<
+    "--stall-sampling [-e]            " <<
+    "Collect EU stall sampling: stall reasons for each kernel and its hottest instructions (Level Zero kernels)" <<
+    std::endl;
+  std::cout <<
     "--device [-d] <ID>               " <<
     "Target device for profiling (default is 0)" <<
     std::endl;
@@ -87,21 +91,25 @@ void Usage() {
 }
 
 // Checks in the launcher, before the application runs, that the metric group
-// asked for (--group, default ComputeBasic) exists on the target device. The
-// query mode (-q) uses event-based groups, the other metric modes time-based
-// ones. If Level Zero or its metrics can't be initialized here, the check is
-// skipped: the tool reports that when the application starts.
+// asked for (--group, default ComputeBasic; EuStallSampling for -e) exists on
+// the target device. The query mode (-q) uses event-based groups, the other
+// metric modes time-based ones. If Level Zero or its metrics can't be
+// initialized here, the check is skipped: the tool reports that when the
+// application starts.
 static bool CheckMetricGroup() {
   bool query = !utils::GetEnv("ONEPROF_KernelQuery").empty();
+  bool stall = !utils::GetEnv("ONEPROF_StallSampling").empty();
   bool stream = !utils::GetEnv("ONEPROF_RawMetrics").empty() ||
                 !utils::GetEnv("ONEPROF_KernelMetrics").empty() ||
-                !utils::GetEnv("ONEPROF_Aggregation").empty();
+                !utils::GetEnv("ONEPROF_Aggregation").empty() || stall;
   if (!query && !stream) {
     return true;
   }
 
   std::string group = utils::GetEnv("ONEPROF_MetricGroup");
-  if (group.empty()) {
+  if (stall) {
+    group = kStallSamplingGroup;
+  } else if (group.empty()) {
     group = "ComputeBasic";
   }
 
@@ -134,6 +142,11 @@ static bool CheckMetricGroup() {
   for (const std::string& name : names) {
     std::cerr << "  " << name << std::endl;
   }
+  if (stall) {
+    // The xe driver lists the group only if metric streams are allowed.
+    std::cerr << "[INFO] EU stall sampling needs a device that supports it " <<
+      "and " << utils::GetPerfParanoidHint() << " set to 0" << std::endl;
+  }
   return false;
 }
 
@@ -163,6 +176,10 @@ int ParseArgs(int argc, char* argv[]) {
     } else if (strcmp(argv[i], "--kernel-query") == 0 ||
                strcmp(argv[i], "-q") == 0) {
       utils::SetEnv("ONEPROF_KernelQuery", "1");
+      ++app_index;
+    } else if (strcmp(argv[i], "--stall-sampling") == 0 ||
+               strcmp(argv[i], "-e") == 0) {
+      utils::SetEnv("ONEPROF_StallSampling", "1");
       ++app_index;
     } else if (strcmp(argv[i], "--device") == 0 ||
                strcmp(argv[i], "-d") == 0) {
@@ -249,6 +266,25 @@ int ParseArgs(int argc, char* argv[]) {
     }
   }
 
+  if (utils::GetEnv("ONEPROF_StallSampling") == "1") {
+    // -k/-a/-q need the time stamps of the OA groups: EU stall reports have
+    // none. -m (raw stall reports) and -i (kernel intervals) can be combined.
+    if (utils::GetEnv("ONEPROF_KernelQuery") == "1" ||
+        utils::GetEnv("ONEPROF_KernelMetrics") == "1" ||
+        utils::GetEnv("ONEPROF_Aggregation") == "1") {
+      std::cerr << "[ERROR] Stall sampling (-e) cannot be combined with " <<
+        "-k, -a or -q" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    std::string group = utils::GetEnv("ONEPROF_MetricGroup");
+    if (!group.empty() && group != kStallSamplingGroup) {
+      std::cerr << "[ERROR] Stall sampling (-e) always uses the " <<
+        kStallSamplingGroup << " group, it cannot be combined with -g " <<
+        group << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
   if (finalization) {
     Finalize();
     return 0;
@@ -312,6 +348,12 @@ static ProfOptions ReadArgs() {
   value = utils::GetEnv("ONEPROF_MetricGroup");
   if (!value.empty()) {
     metric_group = value;
+  }
+
+  value = utils::GetEnv("ONEPROF_StallSampling");
+  if (!value.empty()) {
+    flags |= (1 << PROF_STALL_SAMPLING);
+    metric_group = kStallSamplingGroup;
   }
 
   value = utils::GetEnv("ONEPROF_LogFilename");

@@ -76,7 +76,7 @@ tools = [["instcount", "cl", "ze", "dpc"],
           "--conditional-collection",
           "dpc", "omp"],
         ["oneprof",
-         "-i", "-m", "-k", "-a", "-q", "cl", "ze", "omp"]]
+         "-i", "-m", "-k", "-a", "-q", "-e", "cl", "ze", "omp"]]
 
 def remove_python_cache(path):
   files = os.listdir(path)

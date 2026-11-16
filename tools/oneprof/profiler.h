@@ -9,6 +9,7 @@
 
 #include <sstream>
 
+#include "kernel_isa_collector.h"
 #include "logger.h"
 #include "metric_query_collector.h"
 #include "metric_streamer_collector.h"
@@ -57,7 +58,8 @@ class Profiler {
     } else { // Metric Streamer Mode
       if (profiler->CheckOption(PROF_RAW_METRICS) ||
           profiler->CheckOption(PROF_KERNEL_METRICS) ||
-          profiler->CheckOption(PROF_AGGREGATION)) {
+          profiler->CheckOption(PROF_AGGREGATION) ||
+          profiler->CheckOption(PROF_STALL_SAMPLING)) {
         MetricStreamerCollector* metric_collector =
           MetricStreamerCollector::Create(
             driver, device, options.GetMetricGroup().c_str(),
@@ -72,6 +74,11 @@ class Profiler {
           delete profiler;
           return nullptr;
         }
+      }
+
+      if (profiler->CheckOption(PROF_STALL_SAMPLING)) {
+        // Without it all stall samples are reported as <unknown>.
+        profiler->kernel_isa_collector_ = KernelIsaCollector::Create(driver);
       }
 
       if (profiler->CheckOption(PROF_KERNEL_INTERVALS) ||
@@ -140,6 +147,9 @@ class Profiler {
       if (cl_kernel_collector_ != nullptr) {
         cl_kernel_collector_->DisableTracing();
       }
+      if (kernel_isa_collector_ != nullptr) {
+        kernel_isa_collector_->DisableTracing();
+      }
 
       DumpResultFile();
 
@@ -151,6 +161,9 @@ class Profiler {
       }
       if (cl_kernel_collector_ != nullptr) {
         delete cl_kernel_collector_;
+      }
+      if (kernel_isa_collector_ != nullptr) {
+        delete kernel_isa_collector_;
       }
     }
 
@@ -317,6 +330,9 @@ class Profiler {
         device_props_list_,
         kernel_name_list,
         kernel_interval_list};
+    if (kernel_isa_collector_ != nullptr) {
+      data.kernel_isa_list = kernel_isa_collector_->GetKernelIsaList();
+    }
 
     storage->Dump(&data);
 
@@ -331,6 +347,7 @@ class Profiler {
   MetricStreamerCollector* metric_streamer_collector_ = nullptr;
   ZeKernelCollector* ze_kernel_collector_ = nullptr;
   ClKernelCollector* cl_kernel_collector_ = nullptr;
+  KernelIsaCollector* kernel_isa_collector_ = nullptr;
 
   Correlator correlator_;
 

@@ -41,6 +41,22 @@ FindL0Headers(oneprof_tool)
 CheckForMDLibrary(oneprof_tool)
 CheckForMetricsLibrary()
 
+# IGA is optional: --stall-sampling disassembles the hottest instructions with
+# it, and prints them without disassembly if oneprof is built without it.
+if(WIN32)
+  set(ONEPROF_IGA_LIB OFF)
+else()
+  find_library(ONEPROF_IGA_LIB NAMES iga64 libiga64.so.2 libiga64.so.1)
+endif()
+if(ONEPROF_IGA_LIB)
+  FindIGALibrary(oneprof_tool)
+  GetIGAHeaders(oneprof_tool)
+  target_compile_definitions(oneprof_tool PRIVATE PTI_ONEPROF_IGA=1)
+else()
+  message(STATUS
+    "IGA library is not found: oneprof --stall-sampling won't disassemble instructions")
+endif()
+
 # Loader
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTOOL_NAME=oneprof_tool")

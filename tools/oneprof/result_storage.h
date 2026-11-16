@@ -8,6 +8,7 @@
 #define PTI_TOOLS_ONEPROF_RESULT_STORAGE_H_
 
 #include <fstream>
+#include <string>
 #include <vector>
 
 #include "ze_utils.h"
@@ -28,6 +29,13 @@ struct KernelInterval {
   std::vector<DeviceInterval> device_interval_list;
 };
 
+// A Level Zero kernel's GPU address and ISA (EU stall sampling only).
+struct KernelIsa {
+  std::string name;
+  uint64_t base_address;
+  std::vector<uint8_t> binary;
+};
+
 struct ResultData {
   uint32_t pid;
   uint32_t device_id;
@@ -36,6 +44,7 @@ struct ResultData {
   std::vector<DeviceProps> device_props_list;
   std::vector<std::string> kernel_name_list;
   std::vector<KernelInterval> kernel_interval_list;
+  std::vector<KernelIsa> kernel_isa_list;
 };
 
 class ResultStorage {
@@ -87,6 +96,10 @@ class ResultStorage {
     DumpDeviceProps(data->device_props_list);
     DumpKernelNames(data->kernel_name_list);
     DumpKernelIntervals(data->kernel_interval_list);
+    // Last, so that result files without it (older ones) are still read.
+    if (!data->kernel_isa_list.empty()) {
+      DumpKernelIsa(data->kernel_isa_list);
+    }
   }
 
  private:
@@ -183,6 +196,35 @@ class ResultStorage {
     }
   }
 
+  void DumpKernelIsa(const std::vector<KernelIsa>& kernel_isa_list) {
+    PTI_ASSERT(file_.is_open());
+
+    size_t kernel_isa_list_size = kernel_isa_list.size();
+    file_.write( // Kernel ISA List Size
+        reinterpret_cast<const char*>(&kernel_isa_list_size),
+        sizeof(size_t));
+
+    for (const auto& kernel_isa : kernel_isa_list) {
+      size_t name_size = kernel_isa.name.size();
+      file_.write( // Kernel Name Size
+          reinterpret_cast<const char*>(&name_size),
+          sizeof(size_t));
+      file_.write( // Kernel Name
+          kernel_isa.name.c_str(),
+          name_size * sizeof(char));
+      file_.write( // Base Address
+          reinterpret_cast<const char*>(&kernel_isa.base_address),
+          sizeof(uint64_t));
+      size_t binary_size = kernel_isa.binary.size();
+      file_.write( // Binary Size
+          reinterpret_cast<const char*>(&binary_size),
+          sizeof(size_t));
+      file_.write( // Binary
+          reinterpret_cast<const char*>(kernel_isa.binary.data()),
+          binary_size);
+    }
+  }
+
  private:
   std::ofstream file_;
 };
@@ -227,6 +269,9 @@ class ResultReader {
     data->device_props_list = ReadDeviceProps();
     data->kernel_name_list = ReadKernelNames();
     data->kernel_interval_list = ReadKernelIntervals();
+    if (file_.peek() != std::ifstream::traits_type::eof()) {
+      data->kernel_isa_list = ReadKernelIsa();
+    }
 
     return data;
   }
@@ -343,6 +388,46 @@ class ResultReader {
     }
 
     return kernel_interval_list;
+  }
+
+  std::vector<KernelIsa> ReadKernelIsa() {
+    PTI_ASSERT(file_.is_open());
+
+    size_t kernel_isa_list_size = 0;
+    file_.read( // Kernel ISA List Size
+        reinterpret_cast<char*>(&kernel_isa_list_size),
+        sizeof(size_t));
+
+    std::vector<KernelIsa> kernel_isa_list;
+    for (size_t i = 0; i < kernel_isa_list_size && file_.good(); ++i) {
+      KernelIsa kernel_isa{};
+
+      size_t name_size = 0;
+      file_.read( // Kernel Name Size
+          reinterpret_cast<char*>(&name_size),
+          sizeof(size_t));
+      kernel_isa.name.resize(name_size);
+      file_.read( // Kernel Name
+          &kernel_isa.name[0],
+          name_size * sizeof(char));
+      file_.read( // Base Address
+          reinterpret_cast<char*>(&kernel_isa.base_address),
+          sizeof(uint64_t));
+      size_t binary_size = 0;
+      file_.read( // Binary Size
+          reinterpret_cast<char*>(&binary_size),
+          sizeof(size_t));
+      kernel_isa.binary.resize(binary_size);
+      file_.read( // Binary
+          reinterpret_cast<char*>(kernel_isa.binary.data()),
+          binary_size);
+
+      if (file_.good()) {
+        kernel_isa_list.push_back(kernel_isa);
+      }
+    }
+
+    return kernel_isa_list;
   }
 
  private:
