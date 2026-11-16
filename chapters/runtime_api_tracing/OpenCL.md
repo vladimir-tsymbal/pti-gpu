@@ -4,6 +4,8 @@ OpenCL(TM) API tracing allows to intercept standard API calls by injecting user-
 
 OpenCL(TM) runtimes for Intel(R) Processor Graphics, Intel(R) Core(TM) Processor and Intel(R) Xeon(R) CPU support special tracing extension functions that can be obtained by [`clGetExtensionFunctionAddressForPlatform`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetExtensionFunctionAddressForPlatform.html) call.
 
+These functions are not listed in the device extension strings: look them up and check for `NULL`. The Intel(R) OpenCL(TM) runtimes for GPU (compute-runtime, checked with 25.18 and 26.05) and for CPU provide them.
+
 The following functions are exposed:
 
 ```cpp
@@ -69,13 +71,17 @@ decltype(clCreateTracingHandleINTEL)* _clCreateTracingHandleINTEL =
   reinterpret_cast<decltype(clCreateTracingHandleINTEL)*>(
       clGetExtensionFunctionAddressForPlatform(
           platform, "clCreateTracingHandleINTEL"));
+if (_clCreateTracingHandleINTEL == nullptr) {
+  // The runtime doesn't provide the tracing extension
+}
 ```
+   The other functions (`clSetTracingPointINTEL`, `clEnableTracingINTEL`, `clDisableTracingINTEL`, `clDestroyTracingHandleINTEL`) are obtained the same way as `_clSetTracingPointINTEL`, `_clEnableTracingINTEL`, `_clDisableTracingINTEL` and `_clDestroyTracingHandleINTEL`.
 2. Define the function that will be called along with the traced API, e.g.:
 ```cpp
 void Callback(ClFunctionId fid,
               cl_callback_data* callback_data,
               void* user_data) {
-  std::count << "Function " << callback_data->functionName << " is called (" <<
+  std::cout << "Function " << callback_data->functionName << " is called (" <<
     (callback_data->site == CL_CALLBACK_SITE_ENTER ? "enter" : "exit") <<
     ")" << std::endl;
 }
@@ -83,7 +89,7 @@ void Callback(ClFunctionId fid,
 3. Create a tracing handle for the target device:
 ```cpp
   cl_tracing_handle handle = nullptr;
-  cl_int status = _clCreateTracingHandleINTEL(device, callback,
+  cl_int status = _clCreateTracingHandleINTEL(device, Callback,
                                               nullptr, &handle);
   assert(status == CL_SUCCESS);
 ```

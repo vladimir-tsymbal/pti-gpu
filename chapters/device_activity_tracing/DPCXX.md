@@ -23,12 +23,12 @@ To make these time points available one should use `sycl::queue` object with ena
 - Standard SYCL/DPC++ [runtime](https://github.com/intel/llvm)
 
 ## How To Use
-1. Create a queue with enabled profling mode:
+1. Create a queue with enabled profiling mode:
 ```cpp
-#include <CL/sycl.hpp> // SYCL header
+#include <sycl/sycl.hpp> // SYCL header
 ...
 sycl::property_list prop_list{sycl::property::queue::enable_profiling()};
-sycl::queue queue(sycl::gpu_selector{}, prop_list);
+sycl::queue queue(sycl::gpu_selector_v, prop_list);
 ```
 2. Use this queue to submit a kernel, return an event:
 ```cpp

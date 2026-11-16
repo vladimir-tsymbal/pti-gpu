@@ -37,9 +37,19 @@ To enumerate metrics available on the system one have to iterate over all metric
 The first step is to initialize Level Zero core and tools API:
 ```cpp
 ze_result_t status = ZE_RESULT_SUCCESS;
-status = zeInit(ZE_INIT_FLAG_GPU_ONLY);
+// zeInitDrivers() needs Level Zero 1.10+ headers and loader
+ze_init_driver_type_desc_t driver_desc = {
+    ZE_STRUCTURE_TYPE_INIT_DRIVER_TYPE_DESC, nullptr,
+    ZE_INIT_DRIVER_TYPE_FLAG_GPU};
+uint32_t driver_count = 0;
+status = zeInitDrivers(&driver_count, nullptr, &driver_desc);
+if (status != ZE_RESULT_SUCCESS || driver_count == 0) {
+  // Older loader or driver: fall back to the legacy initialization
+  status = zeInit(ZE_INIT_FLAG_GPU_ONLY);
+}
 assert(status == ZE_RESULT_SUCCESS);
 ```
+The samples and tools do the same in `utils::ze::InitGpuDrivers()` ([ze_utils.h](../../utils/ze_utils.h)). Drivers and devices are then listed with `zeDriverGet` and `zeDeviceGet`.
 Every group and separate metric contain a list of properties that helps to determine their purpose (like name or description) as well as to grab some additional information that should be used while collecting (e.g. metric type or domain ID).
 ```cpp
 uint32_t group_count = 0;
@@ -53,13 +63,13 @@ assert(status == ZE_RESULT_SUCCESS);
 
 for (uint32_t gid = 0; gid < group_count; ++gid) {
   zet_metric_group_properties_t group_props = {};
-  group_props.version = ZET_METRIC_GROUP_PROPERTIES_VERSION_CURRENT;
+  group_props.stype = ZET_STRUCTURE_TYPE_METRIC_GROUP_PROPERTIES;
   status = zetMetricGroupGetProperties(group_list[gid], &group_props);
   assert(status == ZE_RESULT_SUCCESS);
 
   zet_metric_handle_t* metric_list =
-    new zet_metric_handle_t[group_props.metric_count];
-  uint32_t metric_count = group_props.metric_count;
+    new zet_metric_handle_t[group_props.metricCount];
+  uint32_t metric_count = group_props.metricCount;
   status = zetMetricGet(group_list[gid], &metric_count, metric_list);
   assert(status == ZE_RESULT_SUCCESS);
 
@@ -68,7 +78,7 @@ for (uint32_t gid = 0; gid < group_count; ++gid) {
 
   for (uint32_t mid = 0; mid < metric_count; ++mid) {
     zet_metric_properties_t metric_props = {};
-    metric_props.version = ZET_METRIC_PROPERTIES_VERSION_CURRENT;
+    metric_props.stype = ZET_STRUCTURE_TYPE_METRIC_PROPERTIES;
     status = zetMetricGetProperties(metric_list[mid], &metric_props);
     assert(status == ZE_RESULT_SUCCESS);
 
@@ -89,8 +99,8 @@ assert(status == ZE_RESULT_SUCCESS);
 To be able to wait for metric reports one need to make an event within an event pool:
 ```cpp
 ze_event_pool_desc_t event_pool_desc = {
-    ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, nullptr, 0,
-    1}; // event pool size
+    ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, nullptr,
+    ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1}; // event pool size
 ze_event_pool_handle_t event_pool = nullptr;
 status = zeEventPoolCreate(context, &event_pool_desc, 0, nullptr, &event_pool);
 assert(status == ZE_RESULT_SUCCESS);
@@ -125,7 +135,7 @@ while (true) {
   assert(status == ZE_RESULT_SUCCESS || status == ZE_RESULT_NOT_READY);
 
   size_t data_size = 0;
-  status = zetMetricStreamerReadData(metric_streamer, UINT32_MAX
+  status = zetMetricStreamerReadData(metric_streamer, UINT32_MAX,
                                      &data_size, nullptr);
   assert(status == ZE_RESULT_SUCCESS);
 
@@ -155,7 +165,7 @@ assert(status == ZE_RESULT_SUCCESS);
 ```
 
 ### Stream Markers
-***NOTE: not working currently due to Linux kernel issue.***
+***NOTE: not tested: none of the samples or tools uses stream markers. This section was written when they were not working due to a Linux kernel issue.***
 
 Level Zero Metrics API provides a special mechanism to mark any subset of GPU tasks and measure its execution time - e.g. one may get execution time for a specific kernel.
 
@@ -198,8 +208,8 @@ status = zetMetricQueryPoolCreate(
 assert(status == ZE_RESULT_SUCCESS);
 
 ze_event_pool_desc_t event_pool_desc = {
-    ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, nullptr, 0,
-    MAX_KERNEL_COUNT /* pool size */ };
+    ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, nullptr,
+    ZE_EVENT_POOL_FLAG_HOST_VISIBLE, MAX_KERNEL_COUNT /* pool size */ };
 ze_event_pool_handle_t event_pool = nullptr;
 status = zeEventPoolCreate(context, &event_pool_desc, 0, nullptr, &event_pool);
 assert(status == ZE_RESULT_SUCCESS);
@@ -291,7 +301,7 @@ The difference between these two timestamps is that kernel time is in GPU clocks
 NS_IN_SEC = 1000000000
 gpuTimestampNs = gpuTimestampClocks * NS_IN_SEC / gpuTimerFrequency
 ```
-Starting from version 1.1, Level Zero provides this value as `timerResolution` field of `ze_device_properties_t` structure in cycles per second. Also it can be retrieved with the help of Intel(R) Metrics Discovery Application Programming Interface as part of device information as `GpuTimestampFrequency` symbol (look into "Device Information" section from [here](./MetricsDiscoveryAPI.md) for details).
+Starting from version 1.2, Level Zero provides this value as `timerResolution` field of `ze_device_properties_t` structure in cycles per second, if the structure is queried with `stype` set to `ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2` (with `ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES` it is in nanoseconds per cycle). Also it can be retrieved with the help of Intel(R) Metrics Discovery Application Programming Interface as part of device information as `GpuTimestampFrequency` symbol (look into "Device Information" section from [here](./MetricsDiscoveryAPI.md) for details).
 
 #### OpenCL(TM) Kernels
 A common strategy of metrics to kernel mapping for OpenCL(TM) kernels may be the following:
@@ -304,6 +314,16 @@ A common strategy of metrics to kernel mapping for OpenCL(TM) kernels may be the
 To make metrics collection work one need to link the application with Level Zero ICD library (e.g. `libze_loader.so`) and run it as following:
 ```
 ZET_ENABLE_METRICS=1 ./<application>
+```
+
+On Linux the GPU kernel driver allows metric (OA) streams only for root by default. To allow other users, set the sysctl of the driver in use to `0` (it is reset on reboot):
+- i915 kernel driver (e.g. Intel(R) Data Center GPU Max):
+```sh
+echo "0" | sudo tee /proc/sys/dev/i915/perf_stream_paranoid
+```
+- xe kernel driver (e.g. Intel(R) Arc(TM) B-Series):
+```sh
+echo "0" | sudo tee /proc/sys/dev/xe/observation_paranoid
 ```
 
 ## Usage Details

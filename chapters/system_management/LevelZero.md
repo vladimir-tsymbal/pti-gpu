@@ -20,40 +20,47 @@ Level Zero provides a separate section of APIs called [System Management](https:
 
 ## How To Use
 
-All the actions with Level Zero should start after initialization:
+All the actions with Level Zero Sysman should start after its initialization. `zesInit` initializes Sysman independently of the Level Zero core API:
 ```cpp
-zeInit(ZE_INIT_FLAG_GPU_ONLY);
+ze_result_t status = zesInit(0);
+```
+With an older loader or driver that doesn't provide `zesInit`, fall back to the legacy mode, where the Level Zero core device handles are also valid Sysman handles. It is enabled by `ZES_ENABLE_SYSMAN=1`, set before the core API is initialized:
+```cpp
+if (status != ZE_RESULT_SUCCESS) {
+  setenv("ZES_ENABLE_SYSMAN", "1", 1);
+  status = zeInit(ZE_INIT_FLAG_GPU_ONLY);
+}
 ```
 
 ### Device Enumeration
 
-To start monitor some particular accelerator device one need to enumerate all the devices available through Level Zero and choose target one. Enumeration code may look like the following:
+To start monitor some particular accelerator device one need to enumerate all the devices available through Level Zero Sysman and choose target one. After `zesInit` enumeration code may look like the following:
 ```cpp
-// Get number of Level Zero drivers
+// Get number of Sysman drivers
 uint32_t driver_count = 0;
-zeDriverGet(&driver_count, nullptr);
+zesDriverGet(&driver_count, nullptr);
 
 // Get list of drivers
-std::vector<ze_driver_handle_t> driver_list(driver_count);
-zeDriverGet(&driver_count, driver_list.data());
+std::vector<zes_driver_handle_t> driver_list(driver_count);
+zesDriverGet(&driver_count, driver_list.data());
 
 // For each driver get the list of supported devices
 for (uint32_t i = 0; i < driver_count; ++i) {
 
   // Get number of devices for the driver
   uint32_t device_count = 0;
-  zeDeviceGet(driver_list[i], &device_count, nullptr);
+  zesDeviceGet(driver_list[i], &device_count, nullptr);
 
   // Get list of devices
-  std::vector<ze_device_handle_t> device_list(device_count);
-  zeDeviceGet(driver, &device_count, device_list.data());
+  std::vector<zes_device_handle_t> device_list(device_count);
+  zesDeviceGet(driver_list[i], &device_count, device_list.data());
 
   // For each device in the list check if it's GPU
   for (uint32_t j = 0; j < device_count; ++j) {
-    ze_device_properties_t device_properties{
-        ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES, };
-    zeDeviceGetProperties(device_list[j], &device_properties);
-    if (device_properties.type == ZE_DEVICE_TYPE_GPU) {
+    zes_device_properties_t device_properties{
+        ZES_STRUCTURE_TYPE_DEVICE_PROPERTIES, };
+    zesDeviceGetProperties(device_list[j], &device_properties);
+    if (device_properties.core.type == ZE_DEVICE_TYPE_GPU) {
       return device_list[j]; // Choose the first GPU device
     }
   }
@@ -62,13 +69,14 @@ for (uint32_t i = 0; i < driver_count; ++i) {
 
 ### Device Monitoring
 
-Sysman API takes `zes_device_handle_t` as an argument. To get device of this type one can simply cast `ze_device_handle_t` to it or pass `ze_device_handle_t` directly to the function (cast will happen implicitly):
+Sysman API takes `zes_device_handle_t` as an argument. After `zesInit` it comes from `zesDeviceGet`, as shown above. In the legacy mode, devices are enumerated with `zeDriverGet` and `zeDeviceGet`, and `ze_device_handle_t` can be cast to it or passed directly to the function (cast will happen implicitly):
 ```cpp
 zes_device_handle_t sysman_device = static_cast<zes_device_handle_t>(device);
 zesDeviceGetProperties(sysman_device, ...);
 // OR
 zesDeviceGetProperties(device, ...);
 ```
+Don't combine the two modes: the [specification](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/sysman/PROG.html#environment-variables) advises against using `zesInit` together with `ZES_ENABLE_SYSMAN=1`, and deprecates `ZES_ENABLE_SYSMAN` since Level Zero 1.16.
 
 First of all, one can collect a lot of **static** device information, including device, PCI and memory properties, e.g.:
 ```cpp
@@ -198,13 +206,17 @@ zesDeviceEnumFrequencyDomains(device, &domain_count, domain_list.data());
 // Set frequency range for each of the domains
 for (uint32_t i = 0; i < domain_count; ++i) {
   zes_freq_range_t freq_range{300.0, 1200.0};
-  zesFrequencySetRange(domain_list[i], freq_range);
+  zesFrequencySetRange(domain_list[i], &freq_range);
 }
 
 ```
 
 ## Build and Run
 To monitor and control accelerator devices one need to link the application with Level Zero ICD library (e.g. `libze_loader.so`) and run it as following:
+```
+./<application>
+```
+An application that only supports the legacy mode (core handles used as Sysman handles, no `zesInit`) needs `ZES_ENABLE_SYSMAN=1` in its environment instead:
 ```
 ZES_ENABLE_SYSMAN=1 ./<application>
 ```

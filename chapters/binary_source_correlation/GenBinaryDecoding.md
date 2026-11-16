@@ -20,24 +20,27 @@ An example below demonstrates how to split raw GEN binary into separate instruct
 ```cpp
 #include <kv.hpp>
 
-std::vector< std::pair<uint32_t, std::string> > Disassemble(
-    const std::vector<uint8_t>& binary) {
-  std::vector< std::pair<uint32_t, std::string> > instruction_list;
+// arch is the IGA platform of the device that the binary was built for,
+// e.g. IGA_XE_HPC (Intel(R) Data Center GPU Max) or XE_VER(2, 0) (IGA_XE2,
+// Intel(R) Arc(TM) B-Series). GenBinaryDecoder::GfxCoreToIgaGen() in
+// utils/gen_binary_decoder.h maps the device GFX core family to it.
+std::vector< std::pair<uint64_t, std::string> > Disassemble(
+    const std::vector<uint8_t>& binary, iga_gen_t arch) {
+  std::vector< std::pair<uint64_t, std::string> > instruction_list;
 
-  KernelView kv(IGA_GEN9, binary.data(), binary.size(),
-                iga::SWSB_ENCODE_MODE::SingleDistPipe);
+  KernelView kv(arch, binary.data(), binary.size());
   assert(kv.decodeSucceeded());
 
   char text[MAX_STR_SIZE] = { 0 };
-  int32_t offset = 0, size = 0;
+  uint64_t offset = 0, size = 0;
   while (true) {
     size = kv.getInstSize(offset);
     if (size == 0) {
       break;
     }
 
-    size_t lenght = kv.getInstSyntax(offset, text, MAX_STR_SIZE);
-    assert(lenght > 0);
+    size_t length = kv.getInstSyntax(offset, text, MAX_STR_SIZE);
+    assert(length > 0);
     instruction_list.push_back(std::make_pair(offset, text));
 
     offset += size;

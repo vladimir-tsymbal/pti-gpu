@@ -1,6 +1,6 @@
 # GEN Symbols Decoding
 ## Overview
-This chapter describes the way of decodig symbol information that comes from [Intel(R) Processor Graphics Compiler (IGC)](https://github.com/intel/intel-graphics-compiler) and is stored in a special IGC internal format with ELF/DWARF sections inside.
+This chapter describes the way of decoding symbol information that comes from [Intel(R) Processor Graphics Compiler (IGC)](https://github.com/intel/intel-graphics-compiler) and is stored in a special IGC internal format with ELF/DWARF sections inside.
 
 **Supported OS**:
 - Linux

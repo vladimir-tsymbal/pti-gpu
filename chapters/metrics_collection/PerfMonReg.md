@@ -25,8 +25,9 @@ Exact event list and filter options can be found in Programmer's Reference Manua
 
 ## How To Use
 ### Event Set
-To tune PM register to collect a particular event one may use Direct Rendering Manager (DRM) interface to deal with Intel(R) Processor Graphics driver.
+To tune PM register to collect a particular event one may use Direct Rendering Manager (DRM) interface to deal with Intel(R) Processor Graphics driver. The steps differ between the i915 and the xe kernel drivers; the [GPU PerfMon Set](../../samples/gpu_perfmon_set) sample picks the driver at run time and supports both.
 
+#### i915 Kernel Driver
 First of all one have to open DRM interface for i915 driver:
 ```cpp
 int fd = drmOpenWithType("i915", NULL, DRM_NODE_RENDER);
@@ -81,10 +82,13 @@ std::string GetGuid(const std::vector<unsigned>& regs) {
 ```
 Finally one have to use received `config_id` to actually enable event collection:
 ```cpp
+// OA report format of the GPU generation: I915_OA_FORMAT_A32u40_A4u32_B8_C8
+// on Gen12, I915_OA_FORMAT_A24u40_A14u32_B8_C8 on Xe-HP and newer (e.g. PVC).
+// i915 rejects a format the GPU doesn't support with EINVAL.
 uint64_t properties[] = {
   DRM_I915_PERF_PROP_SAMPLE_OA, 1,
   DRM_I915_PERF_PROP_OA_METRICS_SET, static_cast<uint64_t>(config_id),
-  DRM_I915_PERF_PROP_OA_FORMAT, I915_OA_FORMAT_A32u40_A4u32_B8_C8 };
+  DRM_I915_PERF_PROP_OA_FORMAT, I915_OA_FORMAT_A24u40_A14u32_B8_C8 };
 
 struct drm_i915_perf_open_param param = { 0, };
 param.flags = 0;
@@ -99,11 +103,82 @@ Starting from this moment PM register will be incremented every cycle target eve
 
 To stop event collection and release stream configuration one have to close stream descriptor:
 ```cpp
-drmClose(stream_fd);
+close(stream_fd);
 drmClose(fd);
 ```
+
+#### xe Kernel Driver
+The xe driver (Linux 6.11+) provides the same functionality through the `DRM_IOCTL_XE_OBSERVATION` ioctl of [xe_drm.h](https://github.com/torvalds/linux/blob/master/include/uapi/drm/xe_drm.h). Open DRM interface for xe driver:
+```cpp
+int fd = drmOpenWithType("xe", NULL, DRM_NODE_RENDER);
+if (fd < 0) {
+  fd = drmOpenWithType("xe", NULL, DRM_NODE_PRIMARY);
+}
+assert(fd >= 0);
+```
+Add the PM register configuration (same register offset, value and GUID as for i915):
+```cpp
+std::vector<uint32_t> regs(2);
+regs[0] = PERF_REG_OFFSET;
+regs[1] = reg_value; // combined filters + event_id value
+
+struct drm_xe_oa_config config = {};
+memcpy(config.uuid, guid.c_str(), sizeof(config.uuid));
+config.n_regs = static_cast<uint32_t>(regs.size() / 2);
+config.regs_ptr = reinterpret_cast<uint64_t>(regs.data());
+
+struct drm_xe_observation_param param = {};
+param.observation_type = DRM_XE_OBSERVATION_TYPE_OA;
+param.observation_op = DRM_XE_OBSERVATION_OP_ADD_CONFIG;
+param.param = reinterpret_cast<uint64_t>(&config);
+
+config_id = SendIoctl(fd, DRM_IOCTL_XE_OBSERVATION, &param);
+```
+Then open the stream. xe takes the stream properties as a chain of `drm_xe_ext_set_property` extensions, and the OA report format is encoded from its type, counter select, counter size and BC report fields:
+```cpp
+// Xe2 and newer (e.g. BMG, LNL) use PEC formats, e.g. PEC64u64:
+uint64_t format = DRM_XE_OA_FMT_TYPE_PEC | (1 << 8) | (1 << 16);
+// Xe-HP / Xe-HPC (e.g. DG2, PVC) use the OAG format A24u40_A14u32_B8_C8:
+// uint64_t format = DRM_XE_OA_FMT_TYPE_OAG | (5 << 8);
+// xe rejects a format the GPU doesn't support with EINVAL.
+
+const uint64_t properties[][2] = {
+  {DRM_XE_OA_PROPERTY_SAMPLE_OA, 1},
+  {DRM_XE_OA_PROPERTY_OA_METRIC_SET, static_cast<uint64_t>(config_id)},
+  {DRM_XE_OA_PROPERTY_OA_FORMAT, format}};
+const size_t count = sizeof(properties) / sizeof(properties[0]);
+
+struct drm_xe_ext_set_property ext[count];
+memset(ext, 0, sizeof(ext));
+for (size_t i = 0; i < count; ++i) {
+  ext[i].base.name = DRM_XE_OA_EXTENSION_SET_PROPERTY;
+  ext[i].base.next_extension = (i + 1 < count) ?
+    reinterpret_cast<uint64_t>(&ext[i + 1]) : 0;
+  ext[i].property = static_cast<uint32_t>(properties[i][0]);
+  ext[i].value = properties[i][1];
+}
+
+struct drm_xe_observation_param param = {};
+param.observation_type = DRM_XE_OBSERVATION_TYPE_OA;
+param.observation_op = DRM_XE_OBSERVATION_OP_STREAM_OPEN;
+param.param = reinterpret_cast<uint64_t>(&ext[0]);
+
+int stream_fd = SendIoctl(fd, DRM_IOCTL_XE_OBSERVATION, &param);
+```
+The stream is closed the same way as for i915.
+
+#### Permissions
+Both drivers allow these calls only for root by default. To allow other users, set the sysctl of the driver in use to `0` (it is reset on reboot):
+- i915 kernel driver:
+```sh
+echo "0" | sudo tee /proc/sys/dev/i915/perf_stream_paranoid
+```
+- xe kernel driver:
+```sh
+echo "0" | sudo tee /proc/sys/dev/xe/observation_paranoid
+```
 ### Event Read
-Since PM register is accessible only from GPU kernel, it's impossible to read it directly from host side. One of the possible ways to read PM results is to use a special Graphics Technology Pin (GT Pin) probe while binary instrumentation called `perfmon`.
+Since PM register is accessible only from GPU kernel, it's impossible to read it directly from host side. One of the possible ways to read PM results is binary instrumentation with Graphics Technology Pin (GT Pin): its code generator interface (`IGtGenCoder::StartPerfmon`/`StopPerfmon` in `api/igt_gen_coder.h`, GT Pin 5.0.0) emits instructions that read the PM register around the instrumented code. Reading PM results is not covered by the samples in this repository and is not tested.
 
 Refer to Graphics Technology Pin (GT Pin) [chapter](../binary_instrumentation/GTPin.md) to learn more on binary instrumentation techniques.
 

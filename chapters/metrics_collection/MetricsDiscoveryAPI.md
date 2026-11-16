@@ -26,7 +26,7 @@ Metric sets in their turn belongs to **metric groups**. Metric sets from differe
 
 ## How To Use
 Recommended flow while working with Metrics Discovery (MD) API is the following:
-1. Load MD library dynamically using `dlopen`/`LoadLibrary`, get `OpenMetricsDevice` symbol with `dlsym`/`GetProcAddress`, call it and create a device;
+1. Load MD library dynamically using `dlopen`/`LoadLibrary`, get `OpenAdapterGroup` symbol with `dlsym`/`GetProcAddress`, call it, then open a device with `OpenMetricsDevice` of the chosen adapter;
 2. Using device interfaces, enumerate all the metrics and choose target metric sets to collect;
 3. Enable collection and store raw results into memory;
 4. After collection finished, calculate and show actual metric values;
@@ -42,6 +42,9 @@ namespace md = MetricsDiscovery;
 
 // ...
 
+md::TCompletionCode status = md::CC_OK;
+md::IMetricsDeviceLatest* device = nullptr;
+
 const char* name = "libigdmd.so";
 void* handle = dlopen(name, RTLD_NOW);
 assert(handle != nullptr);
@@ -52,7 +55,7 @@ assert(OpenAdapterGroup != nullptr);
 
 md::IAdapterGroupLatest* adapter_group = nullptr;
 status = OpenAdapterGroup(&adapter_group);
-PTI_ASSERT(status == md::CC_OK);
+PTI_ASSERT(status == md::CC_OK || status == md::CC_ALREADY_INITIALIZED);
 
 md::IAdapterLatest* adapter = adapter_group->GetAdapter(0 /* device id*/);
 PTI_ASSERT(adapter != nullptr);
@@ -67,10 +70,10 @@ PTI_ASSERT(status == md::CC_OK || status == md::CC_ALREADY_INITIALIZED);
 
 // Enumerate and/or collect metrics
 
-status = adapter_->CloseMetricsDevice(device_);
+status = adapter->CloseMetricsDevice(device);
 PTI_ASSERT(status == md::CC_OK);
-status = adapter_group_->Close();
-PTI_ASSERT(status == md::CC_OK);
+status = adapter_group->Close();
+PTI_ASSERT(status == md::CC_OK || status == md::CC_STILL_INITIALIZED);
 
 dlclose(handle);
 ```
@@ -189,7 +192,7 @@ while (true) {
            status == md::CC_INTERRUPTED);
 
     uint32_t report_count = max_report_count;
-    status = group->ReadIoStream(&report_count, buffer.data()
+    status = group->ReadIoStream(&report_count, buffer.data(),
                                  md::IO_READ_FLAG_DROP_OLD_REPORTS);
     assert(status == md::CC_OK || status == md::CC_READ_PENDING);
 
@@ -299,6 +302,16 @@ Query-based metrics collection for Level Zero is described [here](./LevelZero.md
 Since Intel(R) Metrics Discovery Application Programming Interface library is loaded dynamically at runtime, there is no need for any special build/run options. Just make sure Intel(R) Metrics Discovery Application Programming Interface library can be found correctly:
 ```sh
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_libigdmd.so> ./<application>
+```
+
+On Linux the GPU kernel driver allows metric (OA) streams only for root by default. To allow other users, set the sysctl of the driver in use to `0` (it is reset on reboot):
+- i915 kernel driver (e.g. Intel(R) Data Center GPU Max):
+```sh
+echo "0" | sudo tee /proc/sys/dev/i915/perf_stream_paranoid
+```
+- xe kernel driver (e.g. Intel(R) Arc(TM) B-Series):
+```sh
+echo "0" | sudo tee /proc/sys/dev/xe/observation_paranoid
 ```
 
 ## Usage Details

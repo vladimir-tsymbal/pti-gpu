@@ -56,7 +56,7 @@ To use them inside an OpenCL(TM) kernel, one need to declare their prototypes fi
 ```cpp
 ulong __attribute__((overloadable)) intel_get_cycle_counter( void );
 
-__kernel kernel(/*...*/) {
+__kernel void kernel(/*...*/) {
   ulong thread_start = intel_get_cycle_counter();
   /* do some computations */
   ulong thread_end = intel_get_cycle_counter();
