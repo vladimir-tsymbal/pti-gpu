@@ -4,7 +4,7 @@ OpenCL(TM) API tracing allows to intercept standard API calls by injecting user-
 
 OpenCL(TM) runtimes for Intel(R) Processor Graphics, Intel(R) Core(TM) Processor and Intel(R) Xeon(R) CPU support special tracing extension functions that can be obtained by [`clGetExtensionFunctionAddressForPlatform`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetExtensionFunctionAddressForPlatform.html) call.
 
-These functions are not listed in the device extension strings: look them up and check for `NULL`. The Intel(R) OpenCL(TM) runtimes for GPU (compute-runtime, checked with 25.18 and 26.05) and for CPU provide them.
+These functions are not listed in the device extension strings: look them up and check for `NULL`. The Intel(R) OpenCL(TM) runtimes for GPU (compute-runtime, checked with 25.18, 26.05 and 26.40) and for CPU provide them.
 
 The following functions are exposed:
 

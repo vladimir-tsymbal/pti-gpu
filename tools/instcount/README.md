@@ -82,7 +82,7 @@ The following capabilities are available:
 
 ## Supported OS
 
-- Ubuntu 24.04 with the i915 kernel driver on Intel(R) Data Center GPU Max 1550, and Ubuntu 26.04 with the xe kernel driver on Intel(R) Arc(TM) B570 Graphics (last check: GT Pin 5.0.0, compute-runtime 25.18 and 26.05; versions in [SOFTWARE](../../SOFTWARE))
+- Ubuntu 24.04 with the i915 kernel driver on Intel(R) Data Center GPU Max 1550, and Ubuntu 26.04 with the xe kernel driver on Intel(R) Arc(TM) B570 Graphics (last check: GT Pin 5.0.0, compute-runtime 25.18, 26.05 and 26.40; versions in [SOFTWARE](../../SOFTWARE))
 - Ubuntu 24.04 (kernel 7.0) with the xe kernel driver on Intel(R) Arc(TM) Pro B70 Graphics: SYCL (DPC++) kernels are not instrumented (GT Pin 5.0.0 finds no kernels); on an Arrow Lake iGPU (i915), the applications fail under GT Pin 5.0.0
 - Windows 11 (last check: GTPin v4.0, driver 31.0.101.4887)
 
