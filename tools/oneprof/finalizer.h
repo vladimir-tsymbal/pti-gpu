@@ -570,7 +570,12 @@ class Finalizer {
       zet_metric_group_handle_t group = utils::ze::FindMetricGroup(
           sub_device, data_->metric_group,
           ZET_METRIC_GROUP_SAMPLING_TYPE_FLAG_TIME_BASED);
-      PTI_ASSERT(group != nullptr);
+      if (group == nullptr) {
+        std::cerr << "[ERROR] Metric group " << data_->metric_group <<
+          " is not available on the device (see oneprof --metric-list)" <<
+          std::endl;
+        return false;
+      }
       metric_group_list.push_back(group);
     }
     PTI_ASSERT(metric_group_list.size() == sub_device_list.size());

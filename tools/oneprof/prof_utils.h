@@ -190,6 +190,41 @@ inline std::string GetMetricUnits(const char* units) {
   return result;
 }
 
+// Names of the metric groups of the given sampling type on the device. Returns
+// false (and no names) if the groups can't be enumerated.
+inline bool GetMetricGroupNames(ze_device_handle_t device,
+                                zet_metric_group_sampling_type_flag_t type,
+                                std::vector<std::string>* names) {
+  PTI_ASSERT(device != nullptr);
+  PTI_ASSERT(names != nullptr);
+  names->clear();
+
+  uint32_t group_count = 0;
+  ze_result_t status = zetMetricGroupGet(device, &group_count, nullptr);
+  if (status != ZE_RESULT_SUCCESS) {
+    return false;
+  }
+
+  std::vector<zet_metric_group_handle_t> group_list(group_count, nullptr);
+  status = zetMetricGroupGet(device, &group_count, group_list.data());
+  if (status != ZE_RESULT_SUCCESS) {
+    return false;
+  }
+
+  for (uint32_t i = 0; i < group_count; ++i) {
+    zet_metric_group_properties_t group_props{};
+    group_props.stype = ZET_STRUCTURE_TYPE_METRIC_GROUP_PROPERTIES;
+    status = zetMetricGroupGetProperties(group_list[i], &group_props);
+    if (status != ZE_RESULT_SUCCESS) {
+      return false;
+    }
+    if (group_props.samplingType & type) {
+      names->push_back(group_props.name);
+    }
+  }
+  return true;
+}
+
 inline void PrintMetricList(uint32_t device_id) {
   ze_result_t status = utils::ze::InitGpuDrivers();
   PTI_ASSERT(status == ZE_RESULT_SUCCESS);
