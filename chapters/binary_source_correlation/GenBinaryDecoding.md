@@ -4,10 +4,10 @@ This chapter describes [Intel(R) Processor Graphics Assembler (IGA)](https://git
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - Intel(R) Processor Graphics Assembler (IGA) library [headers](https://github.com/intel/intel-graphics-compiler/tree/master/visa/iga/IGALibrary/api)
@@ -48,13 +48,12 @@ std::vector< std::pair<uint32_t, std::string> > Disassemble(
 ```
 
 ## Usage Details
-- refer to the paper [Introduction to GEN Assembly](https://software.intel.com/en-us/articles/introduction-to-gen-assembly) to learn more on Intel(R) Processor Graphics instruction set
+- refer to the paper [Introduction to GEN Assembly](https://www.intel.com/content/www/us/en/developer/articles/technical/introduction-to-gen-assembly.html) to learn more on Intel(R) Processor Graphics instruction set
 - look into Intel(R) Processor Graphics Assembler (IGA) library [headers](https://github.com/intel/intel-graphics-compiler/tree/master/visa/iga/IGALibrary/api) to learn more on GEN binary decoding/disassembling interfaces
 
 ## Samples
 - [OpenCL(TM) Debug Info](../../samples/cl_debug_info)
 - [Level Zero Debug Info](../../samples/ze_debug_info)
-- [GPU PerfMon Read](../../samples/gpu_perfmon_read)
 
 ## Tools
-- [Level Zero Tracer](../../tools/instcount)
+- [GPU Instruction Count](../../tools/instcount)

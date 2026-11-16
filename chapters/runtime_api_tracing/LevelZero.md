@@ -9,10 +9,10 @@ API tracing is implemented as one of the layers in Level Zero loader.
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - [zet_api.h](https://github.com/oneapi-src/level-zero/blob/master/include/zet_api.h)
@@ -91,7 +91,7 @@ ZE_ENABLE_TRACING_LAYER=1 ./<application>
 ```
 
 ## Usage Details
-- refer to oneAPI Level Zero API Tracing [documentation](https://spec.oneapi.com/level-zero/latest/tools/PROG.html#api-tracing) to learn more
+- refer to oneAPI Level Zero API Tracing [documentation](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/tools/PROG.html#api-tracing) to learn more
 
 ## Samples
 - [Level Zero Hot Functions](../../samples/ze_hot_functions)

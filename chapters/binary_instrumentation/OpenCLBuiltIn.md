@@ -7,10 +7,10 @@ This chapter describes OpenCL(TM) built-in intrinsics one may use inside the ker
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - OpenCL(TM) [headers](https://github.com/KhronosGroup/OpenCL-Headers)
@@ -65,9 +65,9 @@ __kernel kernel(/*...*/) {
 
 ## Usage Details
 - refer to [Intel(R) Processor Graphics Compiler](https://github.com/intel/intel-graphics-compiler) project to get more details on OpenCL(TM) built-in instrinsicts support ([this](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/BiFModule/Languages/OpenCL/IBiF_Impl.cl) file contains its implementations)
-- refer to the paper [Introduction to GEN Assembly](https://software.intel.com/en-us/articles/introduction-to-gen-assembly) to learn more on Intel(R) Processor Graphics instruction set
+- refer to the paper [Introduction to GEN Assembly](https://www.intel.com/content/www/us/en/developer/articles/technical/introduction-to-gen-assembly.html) to learn more on Intel(R) Processor Graphics instruction set
 - refer to
-[Compute Architecture Manuals](https://software.intel.com/en-us/articles/intel-graphics-developers-guides) to learn more on Intel(R) Processor Graphics Architecture
+[Compute Architecture Manuals](https://www.intel.com/content/www/us/en/developer/articles/guide/intel-graphics-developers-guides.html) to learn more on Intel(R) Processor Graphics Architecture
 
 ## Samples
 - [OpenCL(TM) GEMM with Manual Code Instrumentation](../../samples/cl_gemm_inst)

@@ -7,10 +7,10 @@ This chapter describes the interfaces and solutions one can use to deal with one
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - [zet_api.h](https://github.com/oneapi-src/level-zero/blob/master/include/zet_api.h)
@@ -98,7 +98,7 @@ assert(status == ZE_RESULT_SUCCESS);
 To decode debug symbols for GPU modules one should refer to [Intel(R) Processor Graphics Compiler (IGC)](https://github.com/intel/intel-graphics-compiler) internal formats described [here](GenSymbolsDecoding.md).
 
 ## Usage Details
-- refer to oneAPI Level Zero [documentation](https://spec.oneapi.io/level-zero/latest/index.html) to learn more
+- refer to oneAPI Level Zero [documentation](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/index.html) to learn more
 - look into GEN binary decoding [chapter](GenBinaryDecoding.md) to learn more on GEN binary decoding/disassembling interfaces
 - look into GEN symbols decoding [chapter](GenSymbolsDecoding.md) to learn more on symbols format
 - refer to the IGC [patch_list.h](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/AdaptorOCL/ocl_igc_shared/executable_format/patch_list.h) header to learn more on module binary layout

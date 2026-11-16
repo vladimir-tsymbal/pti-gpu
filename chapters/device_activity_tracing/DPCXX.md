@@ -11,13 +11,13 @@ To make these time points available one should use `sycl::queue` object with ena
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Any
 
 **Needed Headers**:
-- Standard SYCL/DPC++ [headers](https://github.com/intel/llvm/tree/sycl/sycl/include/CL)
+- Standard SYCL/DPC++ [headers](https://github.com/intel/llvm/tree/sycl/sycl/include/sycl)
 
 **Needed Libraries**:
 - Standard SYCL/DPC++ [runtime](https://github.com/intel/llvm)
@@ -57,7 +57,7 @@ std::cout << "Kernel execution time: " << duration << " sec" << std::endl;
 ```
 
 ## Usage Details
-- refer to the [SYCL 2020 standard](https://www.khronos.org/registry/SYCL/specs/sycl-2020/pdf/sycl-2020.pdf) to learn more on events and profiling queues.
+- refer to the [SYCL 2020 standard](https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html) to learn more on events and profiling queues.
 
 ## Samples
 - [DPC++ GEMM](../../samples/dpc_gemm)

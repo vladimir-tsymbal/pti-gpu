@@ -13,10 +13,10 @@ General approach for all the options is to find (or instrument with [Tracing API
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - [ze_api.h](https://github.com/oneapi-src/level-zero/blob/master/include/ze_api.h)
@@ -109,7 +109,7 @@ Event pool profiling does not require any additional environment variables to be
 ```
 
 ## Usage Details
-- refer to oneAPI Level Zero [documentation](https://spec.oneapi.io/level-zero/latest/index.html) to learn more
+- refer to oneAPI Level Zero [documentation](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/index.html) to learn more
 
 ## Samples
 - [Level Zero GEMM](../../samples/ze_gemm)

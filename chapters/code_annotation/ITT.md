@@ -1,7 +1,7 @@
 # Instrumentation and Tracing Technology API (ITT API)
 ## Overview
-The [Instrumentation and Tracing Technology API (ITT API)](https://software.intel.com/content/www/us/en/develop/documentation/vtune-help/top/api-support/instrumentation-and-tracing-technology-apis.html) enables the application to generate and control the collection of tracing data during its execution.
-It is intended for use with [Intel(R) VTune(TM) Analyzer](https://software.intel.com/content/www/us/en/develop/tools/oneapi/components/vtune-profiler.html).
+The [Instrumentation and Tracing Technology API (ITT API)](https://intel.github.io/ittapi/) enables the application to generate and control the collection of tracing data during its execution.
+It is intended for use with [Intel(R) VTune(TM) Analyzer](https://www.intel.com/content/www/us/en/developer/tools/oneapi/vtune-profiler.html).
 
 Instrumentation and Tracing Technology API (ITT API) provides the following capabilities:
 - Enable user to control collection;
@@ -14,7 +14,7 @@ User applications/modules linked to the static user API library do not have a ru
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Any
@@ -23,7 +23,7 @@ User applications/modules linked to the static user API library do not have a ru
 - [ittnotify.h](https://github.com/intel/ittapi/blob/master/include/ittnotify.h)
 
 **Needed Libraries**:
-- Instrumentation and Tracing Technology (ITT) [library](https://github.com/intel/ittapi), can be installed as part of [Intel(R) VTune(TM) Analyzer](https://software.intel.com/content/www/us/en/develop/tools/oneapi/components/vtune-profiler.html)
+- Instrumentation and Tracing Technology (ITT) [library](https://github.com/intel/ittapi), can be installed as part of [Intel(R) VTune(TM) Analyzer](https://www.intel.com/content/www/us/en/developer/tools/oneapi/vtune-profiler.html)
 
 ## How To Use
 The following steps should be performed to enable ITT based code annotation for target application:
@@ -63,10 +63,10 @@ int main() {
 }
 ```
 3. Build the application and link it with ITT library implementation. One may build ITT static library first, and then link the application with it. Another way is to add ITT sources (in particular, [ittnotify_static.c](https://github.com/intel/ittapi/blob/master/src/ittnotify/ittnotify_static.c) file) into the application directly.
-4. Run the application under [Intel(R) VTune(TM) Analyzer](https://software.intel.com/content/www/us/en/develop/tools/oneapi/components/vtune-profiler.html) to see the result.
+4. Run the application under [Intel(R) VTune(TM) Analyzer](https://www.intel.com/content/www/us/en/developer/tools/oneapi/vtune-profiler.html) to see the result.
 
 ## Usage Details
-- refer to Instrumentation and Tracing Technology API (ITT API) [documentation](https://software.intel.com/content/www/us/en/develop/documentation/vtune-help/top/api-support/instrumentation-and-tracing-technology-apis.html) documentation to learn more on programming interfaces
+- refer to Instrumentation and Tracing Technology API (ITT API) [documentation](https://intel.github.io/ittapi/) documentation to learn more on programming interfaces
 - refer to Instrumentation and Tracing Technology API (ITT API) [code repository](https://github.com/intel/ittapi) to learn more on implementation details
 
 ## Samples

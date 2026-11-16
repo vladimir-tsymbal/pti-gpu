@@ -4,7 +4,7 @@ oneAPI Level Zero runtime provides a set of API to collect hardware metrics for 
 
 Each **metric** represents one aspect of GPU performance behaviour and has a unique name, e.g. "EuActive" metric shows the percentage of time GPU execution units were active, "L3Misses" gives the number of L3 cache misses, and "GtiReadThroughput" collects an average throughput while reading data through GTI.
 
-To learn more on Intel(R) Processor Graphics Architecture one may refer to [compute architecture manuals](https://software.intel.com/en-us/articles/intel-graphics-developers-guides).
+To learn more on Intel(R) Processor Graphics Architecture one may refer to [compute architecture manuals](https://www.intel.com/content/www/us/en/developer/articles/guide/intel-graphics-developers-guides.html).
 
 There are two types of metrics - one should be used for continuous collection and another for query-based.
 
@@ -17,11 +17,11 @@ Metric groups in their turn belongs to **metric domains**. Metric groups from di
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
-- Intel(R) Processor Graphics KBL+ (for Stream Markers)
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
+- Stream Markers were documented for Intel(R) Processor Graphics KBL and newer; they are not used by the samples and not tested
 
 **Needed Headers**:
 - [zet_api.h](https://github.com/oneapi-src/level-zero/blob/master/include/zet_api.h)
@@ -307,7 +307,7 @@ ZET_ENABLE_METRICS=1 ./<application>
 ```
 
 ## Usage Details
-- refer to oneAPI Level Zero Metrics [documentation](https://spec.oneapi.com/level-zero/latest/tools/PROG.html#metrics) to learn more
+- refer to oneAPI Level Zero Metrics [documentation](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/tools/PROG.html#metrics) to learn more
 
 ## Samples
 - [Level Zero Metric Info](../../samples/ze_metric_info)

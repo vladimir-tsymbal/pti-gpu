@@ -14,7 +14,7 @@ OpenMP* standard version 5.0+ has a special interface for first-party tools that
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Any

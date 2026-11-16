@@ -7,21 +7,21 @@ To set collection for an event, one have to define three register fields:
 - Coarse Filter - filter by shader type and EU raws;
 - Fine Filter - filter by instruction type and EUs inside a raw.
 
-Exact event list and filter options can be found in Programmer's Reference Manual for Intel(R) Processor Graphics, [Volume 14: Observability](https://01.org/sites/default/files/documentation/intel-gfx-prm-osrc-kbl-vol14-observability.pdf).
+Exact event list and filter options can be found in Programmer's Reference Manual for Intel(R) Processor Graphics (Kaby Lake), [Volume 14: Observability](https://cdrdv2.intel.com/v1/dl/getContent/723971).
 
 **Supported OS**:
 - Linux
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- The driver configuration below (Event Set) is tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver): the configuration is added and the stream opens. Whether the PM register at offset `0xE458` (from the Kaby Lake manual) counts the expected events on these GPUs is not verified, and other GPUs are not tested
 
 **Needed Headers**:
-- [i915_drm.h](https://gitlab.freedesktop.org/mesa/drm/-/blob/master/include/drm/i915_drm.h) and [xf86drm.h](https://gitlab.freedesktop.org/mesa/drm/-/blob/master/xf86drm.h) from *libdrm* to **set**
-- [Graphics Technology Pin (GT Pin)](https://software.intel.com/content/www/us/en/develop/articles/gtpin.html) headers to **read**
+- [i915_drm.h](https://github.com/torvalds/linux/blob/master/include/uapi/drm/i915_drm.h) (i915) or [xe_drm.h](https://github.com/torvalds/linux/blob/master/include/uapi/drm/xe_drm.h) (xe, Linux 6.11+) kernel headers (e.g. the `linux-libc-dev` package) and `xf86drm.h` from [libdrm](https://dri.freedesktop.org/libdrm/) (e.g. the `libdrm-dev` package) to **set**
+- [Graphics Technology Pin (GT Pin)](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html) headers to **read**
 
 **Needed Libraries**:
-- [libdrm](https://gitlab.freedesktop.org/mesa/drm) to **set**
-- [Graphics Technology Pin (GT Pin)](https://software.intel.com/content/www/us/en/develop/articles/gtpin.html) libraries to **read**
+- [libdrm](https://dri.freedesktop.org/libdrm/) to **set**
+- [Graphics Technology Pin (GT Pin)](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html) libraries to **read**
 
 ## How To Use
 ### Event Set
@@ -108,9 +108,8 @@ Since PM register is accessible only from GPU kernel, it's impossible to read it
 Refer to Graphics Technology Pin (GT Pin) [chapter](../binary_instrumentation/GTPin.md) to learn more on binary instrumentation techniques.
 
 ## Usage Details
-- refer to Programmer's Reference Manual for Intel(R) Processor Graphics, [Volume 14: Observability](https://01.org/sites/default/files/documentation/intel-gfx-prm-osrc-kbl-vol14-observability.pdf) to learn more on performance monitoring (PM) register
+- refer to Programmer's Reference Manual for Intel(R) Processor Graphics (Kaby Lake), [Volume 14: Observability](https://cdrdv2.intel.com/v1/dl/getContent/723971) to learn more on performance monitoring (PM) register
 - refer to Graphics Technology Pin (GT Pin) Binary Instrumentation [chapter](../binary_instrumentation/GTPin.md) to learn more on the ways of reading PM events
 
 ## Samples
 - [GPU PerfMon Set](../../samples/gpu_perfmon_set)
-- [GPU PerfMon Read](../../samples/gpu_perfmon_read)

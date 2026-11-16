@@ -17,7 +17,7 @@ Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes use `Que
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Any
@@ -80,7 +80,7 @@ assert(status == CL_SUCCESS)
 Note, that host timestamp in Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver is based on `CLOCK_MONOTONIC_RAW` on Linux and `QueryPerformanceCounter` on Windows (implementation specific, may be changed in future). Both timers are in nanoseconds.
 
 ## Usage Details
-- refer to the documentation for the function [clGetEventProfilingInfo](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetEventProfilingInfo.html) to learn more on OpenCL(TM) profiling
+- refer to the documentation for the function [clGetEventProfilingInfo](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetEventProfilingInfo.html) to learn more on OpenCL(TM) profiling
 
 ## Samples
 - [OpenCL(TM) GEMM](../../samples/cl_gemm)

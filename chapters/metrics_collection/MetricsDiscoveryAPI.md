@@ -13,10 +13,10 @@ Metric sets in their turn belongs to **metric groups**. Metric sets from differe
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - [metrics_discovery_api.h](https://github.com/intel/metrics-discovery/blob/master/inc/common/instrumentation/api/metrics_discovery_api.h)
@@ -304,7 +304,7 @@ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_libigdmd.so> ./<application>
 ## Usage Details
 - refer to the Intel(R) Metrics Discovery Application Programming Interface project [page](https://github.com/intel/metrics-discovery) to learn more on metrics collection for Intel(R) Processor Graphics
 - refer to
-[Compute Architecture Manuals](https://software.intel.com/en-us/articles/intel-graphics-developers-guides) to learn more on Intel(R) Processor Graphics Architecture
+[Compute Architecture Manuals](https://www.intel.com/content/www/us/en/developer/articles/guide/intel-graphics-developers-guides.html) to learn more on Intel(R) Processor Graphics Architecture
 
 ## Samples
 - [GPU Metrics for OpenCL(TM)](../../samples/cl_gpu_metrics)

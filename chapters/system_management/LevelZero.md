@@ -1,16 +1,16 @@
 # System Management for oneAPI Level Zero (Level Zero)
 ## Overview
-Level Zero provides a separate section of APIs called [System Management](https://spec.oneapi.com/level-zero/latest/sysman/PROG.html) to monitor and control the power and performance of accelerator devices.
+Level Zero provides a separate section of APIs called [System Management](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/sysman/PROG.html) to monitor and control the power and performance of accelerator devices.
 
 **Supported Runtimes**:
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime)
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - [zes_api.h](https://github.com/oneapi-src/level-zero/blob/master/include/zes_api.h)
@@ -179,7 +179,7 @@ Also it's possible to collect **dynamic** device information, like current core 
   }
 }
 ```
-In addition Level Zero Sysman API allows to retrieve set of processes currently using accelerator device (including thier memory consumption) through `zesDeviceProcessesGetState`. Look into [documentation](https://spec.oneapi.com/level-zero/latest/sysman/PROG.html) for more details.
+In addition Level Zero Sysman API allows to retrieve set of processes currently using accelerator device (including thier memory consumption) through `zesDeviceProcessesGetState`. Look into [documentation](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/sysman/PROG.html) for more details.
 
 ### Device Control
 
@@ -210,7 +210,7 @@ ZES_ENABLE_SYSMAN=1 ./<application>
 ```
 
 ## Usage Details
-- refer to oneAPI Level Zero Sysman API [documentation](https://spec.oneapi.com/level-zero/latest/sysman/PROG.html) to learn more
+- refer to oneAPI Level Zero Sysman API [documentation](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/sysman/PROG.html) to learn more
 
 ## Samples
 - [Level Zero System Management](../../samples/ze_sysman)

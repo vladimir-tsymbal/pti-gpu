@@ -1,9 +1,9 @@
 # Binary Instrumentation with Graphics Technology Pin (GT Pin)
 
-This chapter is outdated and describes deprecated interface GTPin v2. [Actual GTPin documentation](http://pin.iil.intel.com/pin/gtpin/Doxygen/html/)
+This chapter is outdated and describes deprecated interface GTPin v2. The [GPU Instruction Count](../../tools/instcount) and [GPU Memory Access Analysis](../../tools/memaccess) tools use the current interface of GT Pin 5.0.0, which is documented in the GT Pin package (`Profilers/Docs/Doxygen/html/index.html`, download from the [project page](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html)).
 
 ## Overview
-This chapter describes **Graphics Technology Pin (GT Pin)** -  the solution for binary code instrumentation on Intel(R) Processor Graphics. It is a [Pin](http://pintool.intel.com/) like system that instruments Gen execution unit (EU) binaries and is used to build architectural and software tools to analyze shaders or compute kernels running on Gen EUs.
+This chapter describes **Graphics Technology Pin (GT Pin)** -  the solution for binary code instrumentation on Intel(R) Processor Graphics. It is a [Pin](https://www.intel.com/content/www/us/en/developer/articles/tool/pin-a-dynamic-binary-instrumentation-tool.html) like system that instruments Gen execution unit (EU) binaries and is used to build architectural and software tools to analyze shaders or compute kernels running on Gen EUs.
 
 Graphics Technology Pin (GT Pin) works based on three callbacks:
 - **on kernel build** - called for every GPU kernel while it is building, right place to add any instrumentation into kernel binary;
@@ -14,16 +14,16 @@ Unlike Pin, Graphics Technology Pin (GT Pin) does not support arbitrary instrume
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- The tools built on GT Pin 5.0.0 are tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested. The GTPin v2 interface described in this chapter is not tested
 
 **Needed Headers**:
-- [Graphics Technology Pin (GT Pin)](https://software.intel.com/content/www/us/en/develop/articles/gtpin.html) headers
+- [Graphics Technology Pin (GT Pin)](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html) headers
 
 **Needed Libraries**:
-- [Graphics Technology Pin (GT Pin)](https://software.intel.com/content/www/us/en/develop/articles/gtpin.html) libraries
+- [Graphics Technology Pin (GT Pin)](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html) libraries
 
 ## How To Use
 To start using Graphics Technology Pin (GT Pin), one need to initialize it first. Note, that such an initialization should be performed ***before*** any work with GPU runtimes (like OpenCL) - otherwise some kernels may not be captured.
@@ -112,13 +112,11 @@ ZET_ENABLE_PROGRAM_INSTRUMENTATION=1
 ```
 
 ## Usage Details
-- refer to [Graphics Technology Pin (GT Pin)](https://software.intel.com/content/www/us/en/develop/articles/gtpin.html) project page to learn more on binary instrumentation techniques for Intel(R) Processor Graphics
+- refer to [Graphics Technology Pin (GT Pin)](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html) project page to learn more on binary instrumentation techniques for Intel(R) Processor Graphics
 - refer to
-[Compute Architecture Manuals](https://software.intel.com/en-us/articles/intel-graphics-developers-guides) to learn more on Intel(R) Processor Graphics Architecture
-- refer to the paper [Introduction to GEN Assembly](https://software.intel.com/en-us/articles/introduction-to-gen-assembly) to learn more on Intel(R) Processor Graphics instruction set
-
-## Samples
-- [GPU PerfMon Read](../../samples/gpu_perfmon_read)
+[Compute Architecture Manuals](https://www.intel.com/content/www/us/en/developer/articles/guide/intel-graphics-developers-guides.html) to learn more on Intel(R) Processor Graphics Architecture
+- refer to the paper [Introduction to GEN Assembly](https://www.intel.com/content/www/us/en/developer/articles/technical/introduction-to-gen-assembly.html) to learn more on Intel(R) Processor Graphics instruction set
 
 ## Tools
-- [Level Zero Tracer](../../tools/instcount)
+- [GPU Instruction Count](../../tools/instcount)
+- [GPU Memory Access Analysis](../../tools/memaccess)
