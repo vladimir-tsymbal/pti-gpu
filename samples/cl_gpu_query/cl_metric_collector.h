@@ -16,6 +16,7 @@
 #include "cl_api_tracer.h"
 #include "cl_utils.h"
 #include "metric_device.h"
+#include "perf_access.h"
 #include "trace_guard.h"
 
 #define CL_PROFILING_COMMAND_PERFCOUNTERS_INTEL 0x407F
@@ -101,6 +102,19 @@ class ClMetricCollector {
     if (ptr == nullptr) {
       std::cerr << "[WARNING] Unable to find OpenCL metric query extension" <<
         std::endl;
+      delete metric_device;
+      return nullptr;
+    }
+
+    md::TCompletionCode md_status = set->SetApiFiltering(
+        md::API_TYPE_OCL | md::API_TYPE_OGL4_X);
+    PTI_ASSERT(md_status == md::CC_OK);
+    // Fails if access to GPU metrics is restricted (see perf_access.h).
+    md_status = set->Activate();
+    if (md_status != md::CC_OK) {
+      std::cerr << "[WARNING] Unable to activate the metric set " <<
+        set_name << ": to collect metrics, run as root or set " <<
+        utils::GetPerfParanoidHint() << " to 0" << std::endl;
       delete metric_device;
       return nullptr;
     }
@@ -213,12 +227,7 @@ class ClMetricCollector {
     PTI_ASSERT(group_ != nullptr);
     PTI_ASSERT(set_ != nullptr);
     PTI_ASSERT(clCreatePerfCountersCommandQueue_ != nullptr);
-
-    md::TCompletionCode status = set_->SetApiFiltering(
-        md::API_TYPE_OCL | md::API_TYPE_OGL4_X);
-    PTI_ASSERT(status == md::CC_OK);
-    status = set_->Activate();
-    PTI_ASSERT(status == md::CC_OK);
+    // The metric set is activated by Create and deactivated by the destructor.
   }
 
   void EnableTracing(ClApiTracer* tracer) {
