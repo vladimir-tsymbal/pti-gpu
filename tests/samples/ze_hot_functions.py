@@ -60,7 +60,7 @@ def run(path, option):
     return stdout
   if not parse(stderr):
     return stderr
-  return None
+  return utils.check_api_tracing(command, stderr)
 
 def main(option):
   path = utils.get_sample_build_path("ze_hot_functions")

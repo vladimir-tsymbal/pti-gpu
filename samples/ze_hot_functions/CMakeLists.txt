@@ -20,6 +20,9 @@ endif()
 
 FindL0Library(zet_hot_functions)
 FindL0Headers(zet_hot_functions)
+FindL0HeadersPath(zet_hot_functions
+  "${PROJECT_SOURCE_DIR}/../../tools/ze_tracer/gen_tracing_callbacks.py"
+  --hot-functions)
 
 # Loader
 

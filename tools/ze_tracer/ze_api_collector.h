@@ -18,6 +18,7 @@
 
 #include "correlator.h"
 #include "utils.h"
+#include "ze_tracing_ext.h"
 #include "ze_utils.h"
 
 struct ZeFunction {

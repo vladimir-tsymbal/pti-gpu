@@ -39,6 +39,8 @@ zeCommandQueueExecuteCommandLists,           4,            89169473,     20.72, 
                       zeDeviceGet,           2,                 285,      0.00,                 142,                  76,                 209
                       zeDriverGet,           2,                 221,      0.00,                 110,                  66,                 155
 ```
+**Traced Level Zero APIs:** The timing results cover every API of the Level Zero headers that the tool is built with: the callbacks are generated from them at build time (`tools/ze_tracer/gen_tracing_callbacks.py --hot-functions`). The 1.0 APIs are registered with `zelTracerSetPrologues/Epilogues`. Newer ones, e.g. `zeCommandListAppendLaunchKernelWithArguments`, which the SYCL Level Zero v2 adapter uses for kernel launches, are registered with the per-API `zelTracer*RegisterCallback` functions of the loader. These are looked up at run time, so APIs that the installed loader doesn't know are skipped. Driver extension functions that an application gets with `zeDriverGetExtensionFunctionAddress` (e.g. `zexCounterBasedEventCreate2`) are called directly, bypassing the loader, and are not traced.
+
 ## Supported OS
 - Linux
 - Windows (*under development*)

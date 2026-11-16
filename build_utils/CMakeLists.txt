@@ -679,6 +679,8 @@ macro(FindL0Headers TARGET)
   set(CMAKE_REQUIRED_INCLUDES)
 endmacro()
 
+# Generates tracing.gen (Level Zero tracing callbacks) with L0_GEN_SCRIPT from
+# the Level Zero headers; extra arguments are passed to the script.
 macro(FindL0HeadersPath TARGET L0_GEN_SCRIPT)
   RequirePythonInterp()
   find_path(L0_INC_PATH
@@ -696,7 +698,8 @@ macro(FindL0HeadersPath TARGET L0_GEN_SCRIPT)
   add_custom_target(ze_gen_headers ALL
                     DEPENDS ${L0_GEN_INC_PATH}/tracing.gen)
   add_custom_command(OUTPUT ${L0_GEN_INC_PATH}/tracing.gen
-                     COMMAND "${PYTHON_EXECUTABLE}" ${L0_GEN_SCRIPT} ${L0_GEN_INC_PATH} "${L0_INC_PATH}/level_zero")
+                     COMMAND "${PYTHON_EXECUTABLE}" ${L0_GEN_SCRIPT} ${L0_GEN_INC_PATH} "${L0_INC_PATH}/level_zero" ${ARGN}
+                     DEPENDS ${L0_GEN_SCRIPT})
   if(TARGET level_zero_headers)
     # The headers are downloaded at build time (FindL0Headers fallback);
     # generate the callbacks only after they exist.
