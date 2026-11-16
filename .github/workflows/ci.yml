@@ -2,7 +2,8 @@
 
 # Build-only check of the aggregate top-level CMake project on a GitHub-hosted
 # runner (no GPU, no oneAPI). Components that need oneAPI (icpx), MDAPI,
-# GTPin or IGA are skipped.
+# GTPin or IGA are skipped. The docs job checks the relative links in the
+# Markdown files.
 
 name: ci
 
@@ -61,3 +62,14 @@ jobs:
 
       - name: Install
         run: cmake --install build --prefix "${{ runner.temp }}/pti-install"
+
+  docs:
+    name: Check Markdown relative links
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check links
+        run: python3 build_utils/check_md_links.py
