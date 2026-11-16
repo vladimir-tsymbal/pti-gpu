@@ -114,9 +114,10 @@ Offset,Samples,Top Reason,Instruction,
 - Windows (*under development*)
 
 ## Tested Configurations
-- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver), Intel(R) Arc(TM) B570 and Arc(TM) Pro B70 Graphics (xe kernel driver), and an Arrow Lake iGPU (i915 kernel driver); other devices are not tested
 - Software: the versions listed in [SOFTWARE](../../SOFTWARE)
 - Metrics (OA) collection: tested with both kernel drivers
+- On the Arrow Lake iGPU (compute runtime 26.27), the query mode (`-q`) fails in the runtime, and there is no `EuStallSampling` group (`-e` is not available)
 
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)

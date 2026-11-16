@@ -4,6 +4,10 @@
 #             i915 out-of-tree DKMS driver
 #   xe-bmg:   Intel Arc B570 (Xe2, BMG G21), Ubuntu 26.04, kernel 7.0,
 #             in-tree xe driver
+#   g31-arl:  one host with two GPUs, tested one at a time
+#             (ZE_AFFINITY_MASK=0/1): Intel Arc Pro B70 (Xe2, BMG G31, in-tree
+#             xe driver) and an Arrow Lake iGPU (Xe-LPG, in-tree i915 driver),
+#             Ubuntu 24.04 with the HWE kernel 7.0
 # Other GPUs, distributions and driver versions are not tested.
 #
 # Headers that the build fetches by itself (pinned in build_utils/get_*.py):
@@ -74,6 +78,53 @@ metrics-discovery-xe-bmg:
 metrics-library-xe-bmg:
   github:
     # Not packaged for Ubuntu 26.04
+    build_path: null
+    commands:
+    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    - cmake --build build -j$(nproc)
+    - sudo cmake --install build
+    commit: 1b83c3ae7fc9e8442a1da06b8e8f955c5a9b4d60  # tag 1.0.249
+    url: https://github.com/intel/metrics-library
+kernel-g31-arl:
+  apt:
+    # Ubuntu 24.04 HWE kernel: the 6.8 kernel has no BMG G31 support.
+    packages:
+    - linux-generic-hwe-24.04=7.0.0-43.43~24.04.1
+firmware-g31-arl:
+  config:
+    # The BMG firmware of Ubuntu 24.04 (linux-firmware 20240318) is too old:
+    # GuC 70.58, HuC 8.2.10 and DMC 2.6 were taken from the Ubuntu 26.04
+    # linux-firmware package (20260319.git217ca6e4) into /lib/firmware/updates.
+    commands:
+    - sudo mkdir -p /lib/firmware/updates/xe /lib/firmware/updates/i915
+    - sudo cp xe/bmg_guc_70.bin.zst xe/bmg_huc.bin.zst /lib/firmware/updates/xe/
+    - sudo cp i915/bmg_dmc.bin.zst /lib/firmware/updates/i915/
+    - sudo update-initramfs -u
+level-zero-loader-g31-arl:
+  github:
+    # Release debs; check them against the release's sha256 digests.
+    commands:
+    - sudo apt-get install -y ./libze1_1.32.0+u24.04_amd64.deb ./libze-dev_1.32.0+u24.04_amd64.deb
+    url: https://github.com/oneapi-src/level-zero/releases/tag/v1.32.0
+compute-runtime-g31-arl:
+  github:
+    # The latest release with an Ubuntu 24.04 install procedure; the packages
+    # of IGC v2.38.2 come from its release page. Check them with ww27.sum
+    # and the IGC release's sha256 sums.
+    commands:
+    - sudo apt-get install -y ./intel-igc-core-2_2.38.2+22051_amd64.deb ./intel-igc-opencl-2_2.38.2+22051_amd64.deb ./intel-ocloc_26.27.39122.11-0_amd64.deb ./intel-opencl-icd_26.27.39122.11-0_amd64.deb ./libigdgmm12_22.10.0_amd64.deb ./libze-intel-gpu1_26.27.39122.11-0_amd64.deb
+    url: https://github.com/intel/compute-runtime/releases/tag/26.27.39122.11
+metrics-discovery-g31-arl:
+  github:
+    build_path: null
+    commands:
+    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    - cmake --build build -j$(nproc)
+    - sudo cmake --install build
+    commit: bd0a8f79afcc421833114f8cc895ff81b0629036  # tag 1.16.199
+    url: https://github.com/intel/metrics-discovery
+metrics-library-g31-arl:
+  github:
     build_path: null
     commands:
     - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

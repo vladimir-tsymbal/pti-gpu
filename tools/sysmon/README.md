@@ -85,7 +85,7 @@ FP16 Round To Nearest Even,             yes
 - Linux
 
 ## Tested Configurations
-- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver), Intel(R) Arc(TM) B570 and Arc(TM) Pro B70 Graphics (xe kernel driver), and an Arrow Lake iGPU (i915 kernel driver); other devices are not tested
 - Software: the versions listed in [SOFTWARE](../../SOFTWARE)
 
 ## Prerequisites
