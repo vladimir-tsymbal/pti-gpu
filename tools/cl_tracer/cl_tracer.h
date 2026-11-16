@@ -366,7 +366,9 @@ class ClTracer {
       const Collector* cpu_collector,
       const Collector* gpu_collector,
       const char* type) {
-    PTI_ASSERT (cpu_collector != nullptr || gpu_collector != nullptr);
+    if (cpu_collector == nullptr && gpu_collector == nullptr) {
+      return; // No collector could be created (see the warnings)
+    }
 
     std::string cpu_title =
       std::string("Total ") + std::string(type) +
@@ -411,7 +413,9 @@ class ClTracer {
       const ClKernelCollector* cpu_collector,
       const ClKernelCollector* gpu_collector,
       const char* type) {
-    PTI_ASSERT (cpu_collector != nullptr || gpu_collector != nullptr);
+    if (cpu_collector == nullptr && gpu_collector == nullptr) {
+      return; // No collector could be created (see the warnings)
+    }
 
     std::string cpu_title =
       std::string("Total ") + std::string(type) +

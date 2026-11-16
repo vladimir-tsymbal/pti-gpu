@@ -7,6 +7,8 @@
 #ifndef PTI_UTILS_CL_API_TRACER_H_
 #define PTI_UTILS_CL_API_TRACER_H_
 
+#include <iostream>
+
 #include <CL/tracing_api.h>
 
 #include "pti_assert.h"
@@ -127,6 +129,13 @@ class ClApiTracer {
         clEnableTracing_ == nullptr ||
         clDisableTracing_ == nullptr ||
         clGetTracingState_ == nullptr) {
+      static bool reported = false;
+      if (!reported) {
+        reported = true;
+        std::cerr << "[WARNING] The OpenCL runtime does not provide the " <<
+          "Intel tracing extension (clCreateTracingHandleINTEL): OpenCL " <<
+          "calls and kernels are not traced" << std::endl;
+      }
       return false;
     }
 

@@ -216,4 +216,11 @@ def run_process(command, path, environ = None):
     p.communicate()
     raise TestTimeout(" ".join(command))
 
+  # The OpenCL tracing tools need the Intel tracing extension of the OpenCL
+  # runtime (utils/cl_api_tracer.h reports it once if it is missing).
+  if stderr and stderr.find("Intel tracing extension " +
+                            "(clCreateTracingHandleINTEL)") != -1:
+    skip("the OpenCL runtime does not provide clCreateTracingHandleINTEL " +
+         "(Intel OpenCL tracing extension)")
+
   return stdout, stderr
