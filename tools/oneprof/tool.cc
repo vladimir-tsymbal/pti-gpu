@@ -46,7 +46,7 @@ void Usage() {
     std::endl;
   std::cout <<
     "--stall-sampling [-e]            " <<
-    "Collect EU stall sampling: stall reasons for each kernel and its hottest instructions (Level Zero kernels)" <<
+    "Collect EU stall sampling: stall reasons for each kernel and its hottest instructions (Level Zero and OpenCL kernels)" <<
     std::endl;
   std::cout <<
     "--device [-d] <ID>               " <<

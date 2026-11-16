@@ -1311,7 +1311,7 @@ class Finalizer {
     logger_.Log("\n");
 
     if (data_->kernel_isa_list.empty()) {
-      std::cerr << "[WARNING] No Level Zero kernels were recorded: " <<
+      std::cerr << "[WARNING] No kernels were recorded: " <<
         "all samples are reported as <unknown>" << std::endl;
     }
 
