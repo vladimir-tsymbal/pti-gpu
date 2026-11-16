@@ -146,5 +146,5 @@ oneprof.exe [options] <target_application>
 ```
 One may use e.g. [dpc_gemm](../../samples/dpc_gemm) as target application, e.g.:
 ```sh
-oneprof.exe a -s 100 -g ComputeExtended ..\..\..\samples\dpc_gemm\build\dpc_gemm.exe
+oneprof.exe -a -s 100 -g ComputeBasic ..\..\..\samples\dpc_gemm\build\dpc_gemm.exe
 ```

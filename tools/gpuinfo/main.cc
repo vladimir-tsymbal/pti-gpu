@@ -25,11 +25,11 @@ static void Usage() {
   std::cout << "--info [-i]      " <<
     "Print general device info (default)" << std::endl;
   std::cout << "--metrics [-m]   " <<
-    "Print list of available mertrics" << std::endl;
+    "Print list of available metrics" << std::endl;
   std::cout << "--help [-h]      " <<
     "Print this help message" << std::endl;
   std::cout << "--version        " <<
-    "Print this help message" << std::endl;
+    "Print version" << std::endl;
 }
 
 static const char* GetDeviceName(const MetricDevice& device) {

@@ -1,8 +1,12 @@
 ---
 
-# Build-only check of the aggregate top-level CMake project on a GitHub-hosted
-# runner (no GPU, no oneAPI). Components that need oneAPI (icpx), MDAPI,
-# GTPin or IGA are skipped.
+# Build-only checks on GitHub-hosted runners (no GPU, so no tests run here):
+# - build-lin: the aggregate top-level CMake project with GCC on Ubuntu 24.04
+#   and 26.04. Components that need oneAPI (icpx), GTPin or IGA are skipped.
+# - build-icpx: the same build with the oneAPI DPC++/C++ compiler installed,
+#   so the icpx samples (dpc_gemm, dpc_info, omp_gemm, omp_hot_regions) are
+#   built as well.
+# - docs: relative links in the Markdown files.
 
 name: ci
 
@@ -20,11 +24,23 @@ on:
 permissions:
   contents: read
 
+env:
+  # Ubuntu 24.04's own libze-dev (1.16) lacks zeInitDrivers, so 24.04 uses the
+  # Level Zero loader release (same version as build_utils/get_ze_headers.py).
+  # Ubuntu 26.04's libze-dev (1.28) has it; there are no 26.04 release debs.
+  LEVEL_ZERO_VERSION: "1.29.0"
+  # oneAPI DPC++/C++ compiler package from the Intel oneAPI apt repository.
+  ONEAPI_COMPILER_PACKAGE: intel-oneapi-compiler-dpcpp-cpp-2026.2
+
 jobs:
   build-lin:
-    name: Build tools and samples (ubuntu-24.04)
-    runs-on: ubuntu-24.04
+    name: Build tools and samples (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
     defaults:
       run:
         shell: bash
@@ -33,20 +49,21 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install dependencies
-        env:
-          # Ubuntu's own libze-dev (1.16) lacks zeInitDrivers, so use the
-          # Level Zero loader release (same version as build_utils/get_ze_headers.py).
-          LEVEL_ZERO_VERSION: "1.29.0"
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build opencl-headers \
             ocl-icd-opencl-dev libdrm-dev python3
-          url="https://github.com/oneapi-src/level-zero/releases/download/v${LEVEL_ZERO_VERSION}"
-          for pkg in libze1 libze-dev; do
-            curl -fsSL --retry 3 -o "${RUNNER_TEMP}/${pkg}.deb" \
-              "${url}/${pkg}_${LEVEL_ZERO_VERSION}+u24.04_amd64.deb"
-          done
-          sudo apt-get install -y "${RUNNER_TEMP}/libze1.deb" "${RUNNER_TEMP}/libze-dev.deb"
+          if [ "${{ matrix.os }}" = "ubuntu-24.04" ]; then
+            url="https://github.com/oneapi-src/level-zero/releases/download/v${LEVEL_ZERO_VERSION}"
+            for pkg in libze1 libze-dev; do
+              curl -fsSL --retry 3 -o "${RUNNER_TEMP}/${pkg}.deb" \
+                "${url}/${pkg}_${LEVEL_ZERO_VERSION}+u24.04_amd64.deb"
+            done
+            sudo apt-get install -y "${RUNNER_TEMP}/libze1.deb" "${RUNNER_TEMP}/libze-dev.deb"
+          else
+            sudo apt-get install -y libze-dev
+          fi
+          dpkg-query -W libze-dev
 
       - name: Configure
         run: |
@@ -61,3 +78,72 @@ jobs:
 
       - name: Install
         run: cmake --install build --prefix "${{ runner.temp }}/pti-install"
+
+  build-icpx:
+    name: Build with the oneAPI DPC++/C++ compiler (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build opencl-headers \
+            ocl-icd-opencl-dev libdrm-dev python3 gpg
+          url="https://github.com/oneapi-src/level-zero/releases/download/v${LEVEL_ZERO_VERSION}"
+          for pkg in libze1 libze-dev; do
+            curl -fsSL --retry 3 -o "${RUNNER_TEMP}/${pkg}.deb" \
+              "${url}/${pkg}_${LEVEL_ZERO_VERSION}+u24.04_amd64.deb"
+          done
+          sudo apt-get install -y "${RUNNER_TEMP}/libze1.deb" "${RUNNER_TEMP}/libze-dev.deb"
+          # Intel oneAPI apt repository (https://apt.repos.intel.com/oneapi).
+          curl -fsSL --retry 3 \
+            https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+            | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+            | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "${ONEAPI_COMPILER_PACKAGE}"
+
+      - name: Configure
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          icpx --version | head -1
+          cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=Release \
+            "-DPTI_GPU_SKIP=instcount;memaccess" 2>&1 | tee configure.log
+          # Fail if CMake did not find icpx (the icpx samples would be skipped).
+          if grep -q "icpx not found" configure.log; then
+            echo "::error::icpx samples were skipped"
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cmake --build build
+          for f in dpc_gemm/dpc_gemm dpc_info/dpc_info omp_gemm/omp_gemm \
+                   omp_hot_regions/libomp_hot_regions.so; do
+            test -f "build/samples/${f}" \
+              || { echo "::error::build/samples/${f} was not built"; exit 1; }
+          done
+
+      - name: Install
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cmake --install build --prefix "${{ runner.temp }}/pti-install"
+
+  docs:
+    name: Check Markdown relative links
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check links
+        run: python3 build_utils/check_md_links.py

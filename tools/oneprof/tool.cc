@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: MIT
 // =============================================================
 
+#include <algorithm>
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "finalizer.h"
 #include "perf_access.h"
@@ -81,6 +84,57 @@ void Usage() {
     "--version                        " <<
     "Print version" <<
     std::endl;
+}
+
+// Checks in the launcher, before the application runs, that the metric group
+// asked for (--group, default ComputeBasic) exists on the target device. The
+// query mode (-q) uses event-based groups, the other metric modes time-based
+// ones. If Level Zero or its metrics can't be initialized here, the check is
+// skipped: the tool reports that when the application starts.
+static bool CheckMetricGroup() {
+  bool query = !utils::GetEnv("ONEPROF_KernelQuery").empty();
+  bool stream = !utils::GetEnv("ONEPROF_RawMetrics").empty() ||
+                !utils::GetEnv("ONEPROF_KernelMetrics").empty() ||
+                !utils::GetEnv("ONEPROF_Aggregation").empty();
+  if (!query && !stream) {
+    return true;
+  }
+
+  std::string group = utils::GetEnv("ONEPROF_MetricGroup");
+  if (group.empty()) {
+    group = "ComputeBasic";
+  }
+
+  if (utils::ze::InitGpuDrivers() != ZE_RESULT_SUCCESS) {
+    return true;
+  }
+  std::vector<ze_device_handle_t> device_list = utils::ze::GetDeviceList();
+  std::string value = utils::GetEnv("ONEPROF_DeviceId");
+  uint32_t device_id = value.empty() ? 0 : std::stoul(value);
+  if (device_id >= device_list.size()) {
+    return true;
+  }
+
+  zet_metric_group_sampling_type_flag_t type = query ?
+    ZET_METRIC_GROUP_SAMPLING_TYPE_FLAG_EVENT_BASED :
+    ZET_METRIC_GROUP_SAMPLING_TYPE_FLAG_TIME_BASED;
+  std::vector<std::string> names;
+  if (!GetMetricGroupNames(device_list[device_id], type, &names) ||
+      names.empty()) {
+    return true;
+  }
+  if (std::find(names.begin(), names.end(), group) != names.end()) {
+    return true;
+  }
+
+  std::cerr << "[ERROR] Metric group " << group << " is not available on " <<
+    "device #" << device_id << " for " <<
+    (query ? "the query mode (-q)" : "time-based sampling") <<
+    ". Available groups:" << std::endl;
+  for (const std::string& name : names) {
+    std::cerr << "  " << name << std::endl;
+  }
+  return false;
 }
 
 extern "C" PTI_EXPORT
@@ -205,6 +259,10 @@ int ParseArgs(int argc, char* argv[]) {
     uint32_t device_id = value.empty() ? 0 : std::stoul(value);
     PrintMetricList(device_id);
     return 0;
+  }
+
+  if (!CheckMetricGroup()) {
+    exit(EXIT_FAILURE);
   }
 
   return app_index;

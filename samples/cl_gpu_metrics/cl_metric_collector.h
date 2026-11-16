@@ -16,11 +16,13 @@
 
 #include "cl_utils.h"
 #include "metric_device.h"
+#include "perf_access.h"
 
 enum CollectorState {
   COLLECTOR_STATE_IDLE = 0,
   COLLECTOR_STATE_ENABLED = 1,
-  COLLECTOR_STATE_DISABLED = 2
+  COLLECTOR_STATE_DISABLED = 2,
+  COLLECTOR_STATE_FAILED = 3 // the metric stream could not be opened
 };
 
 class ClMetricCollector {
@@ -56,11 +58,28 @@ class ClMetricCollector {
       return nullptr;
     }
 
-    return new ClMetricCollector(metric_device, group, set);
+    ClMetricCollector* collector =
+      new ClMetricCollector(metric_device, group, set);
+    if (collector->collector_state_.load(std::memory_order_acquire) ==
+        COLLECTOR_STATE_FAILED) {
+      std::cerr << "[WARNING] Unable to open the metric stream for " <<
+        set_name << ": to collect metrics, run as root or set " <<
+        utils::GetPerfParanoidHint() << " to 0" << std::endl;
+      delete collector;
+      return nullptr;
+    }
+
+    return collector;
   }
 
   ~ClMetricCollector() {
-    PTI_ASSERT(collector_state_ == COLLECTOR_STATE_DISABLED);
+    if (collector_state_ == COLLECTOR_STATE_FAILED) {
+      PTI_ASSERT(collector_thread_ != nullptr);
+      collector_thread_->join();
+      delete collector_thread_;
+    }
+    PTI_ASSERT(collector_state_ == COLLECTOR_STATE_DISABLED ||
+               collector_state_ == COLLECTOR_STATE_FAILED);
     PTI_ASSERT(device_ != nullptr);
     delete device_;
   }
@@ -178,8 +197,8 @@ class ClMetricCollector {
     collector_thread_ = new std::thread(Collect, this);
     PTI_ASSERT(collector_thread_ != nullptr);
 
-    while (collector_state_.load(std::memory_order_acquire) !=
-          COLLECTOR_STATE_ENABLED) {
+    while (collector_state_.load(std::memory_order_acquire) ==
+          COLLECTOR_STATE_IDLE) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
@@ -219,8 +238,13 @@ class ClMetricCollector {
     status = set->SetApiFiltering(md::API_TYPE_IOSTREAM);
     PTI_ASSERT(status == md::CC_OK);
 
+    // Fails if access to GPU metrics is restricted (see perf_access.h).
     status = group->OpenIoStream(set, 0, &sampling_interval, &buffer_size);
-    PTI_ASSERT(status == md::CC_OK);
+    if (status != md::CC_OK) {
+      collector->collector_state_.store(
+          COLLECTOR_STATE_FAILED, std::memory_order_release);
+      return;
+    }
 
     PTI_ASSERT(buffer_size > 0);
     uint32_t max_report_count = buffer_size / set->GetParams()->RawReportSize;

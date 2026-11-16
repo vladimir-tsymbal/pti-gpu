@@ -98,9 +98,9 @@ _ZTSZZL11RunAndCheckN4sycl3_V15queueERKSt6vectorIfSaIfEES6_RS4_jfENKUlRNS0_7hand
 == L0 Backend: ==
 
                                                                                               Kernel,       Calls,         Append (ns),  Append (%),         Submit (ns),  Submit (%),        Execute (ns), Execute (%),
-_ZTSZZL11RunAndCheckN4sycl3_V15queueERKSt6vectorIfSaIfEES6_RS4_jfENKUlRNS0_7handlerEE_clES9_E6__GEMM,           4,                   0,        -nan,              358560,       28.16,            13352320,       61.18,
-                                                                  zeCommandListAppendMemoryCopy(M2D),          12,                   0,        -nan,              185280,       14.55,             7060400,       32.35,
-                                                                  zeCommandListAppendMemoryCopy(D2M),           4,                   0,        -nan,              729600,       57.29,             1411360,        6.47,
+_ZTSZZL11RunAndCheckN4sycl3_V15queueERKSt6vectorIfSaIfEES6_RS4_jfENKUlRNS0_7handlerEE_clES9_E6__GEMM,           4,                   0,        0.00,              358560,       28.16,            13352320,       61.18,
+                                                                  zeCommandListAppendMemoryCopy(M2D),          12,                   0,        0.00,              185280,       14.55,             7060400,       32.35,
+                                                                  zeCommandListAppendMemoryCopy(D2M),           4,                   0,        0.00,              729600,       57.29,             1411360,        6.47,
 ```
 **Verbose** mode provides additional information per kernel (SIMD width, group count and group size for oneAPI Level Zero (Level Zero) and SIMD width, global and local size for OpenCL(TM)) and per transfer (bytes transferred). This option should be used in addition to others, e.g. for **Device Timing** mode one can get:
 ```

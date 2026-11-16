@@ -9,9 +9,9 @@ Usage: ./gpuinfo[.exe] <options>
 Options:
 --list [-l]      Print list of available devices
 --info [-i]      Print general device info (default)
---metrics [-m]   Print list of available mertrics
+--metrics [-m]   Print list of available metrics
 --help [-h]      Print this help message
---version        Print this help message
+--version        Print version
 ```
 
 Expected output should be the following:
