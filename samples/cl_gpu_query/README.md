@@ -13,6 +13,7 @@ Total Kernel Time (ns): 29159061
       GEMM,           4,            29159061,          100.00,             7289765,           81.69,           16.38,            1.93
 ```
 To set target device and sub-device to collect metrics from one can specify `PTI_DEVICE_ID` and `PTI_SUB_DEVICE_ID` environment variables.
+Without `PTI_DEVICE_ID`, the metrics come from the GPU at the PCI address of the OpenCL device (`cl_khr_pci_bus_info`), so that on a system with several GPUs (e.g. a discrete GPU and an integrated one) they are taken from the GPU the kernels run on; if the device has no PCI address, the first metrics adapter is used.
 
 ## Supported OS
 - Linux

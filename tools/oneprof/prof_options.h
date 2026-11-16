@@ -24,8 +24,9 @@
 
 // The time-based metric group that --stall-sampling [-e] streams.
 static const char kStallSamplingGroup[] = "EuStallSampling";
-// Instructions listed per kernel in the --stall-sampling report.
-static const size_t kStallHotInstructionCount = 10;
+// Instructions listed per kernel in the --stall-sampling report by default
+// (--hot-instructions <N>; 0 lists all sampled instructions).
+static const uint32_t kStallHotInstructionCount = 10;
 
 class ProfOptions {
  public:
@@ -36,14 +37,16 @@ class ProfOptions {
       const std::string& metric_group,
       const std::string& log_file,
       const std::string& raw_data_path,
-      const std::string& result_file)
+      const std::string& result_file,
+      uint32_t hot_instruction_count = kStallHotInstructionCount)
       : flags_(flags),
         device_id_(device_id),
         sampling_interval_(sampling_interval),
         metric_group_(metric_group),
         log_file_(log_file),
         raw_data_path_(raw_data_path),
-        result_file_(result_file) {}
+        result_file_(result_file),
+        hot_instruction_count_(hot_instruction_count) {}
 
   bool CheckFlag(uint32_t flag) const {
     return (flags_ & (1 << flag));
@@ -105,6 +108,10 @@ class ProfOptions {
     return result_file_;
   }
 
+  uint32_t GetHotInstructionCount() const {
+    return hot_instruction_count_;
+  }
+
  private:
   uint32_t flags_;
   uint32_t device_id_;
@@ -113,6 +120,7 @@ class ProfOptions {
   std::string log_file_;
   std::string raw_data_path_;
   std::string result_file_;
+  uint32_t hot_instruction_count_;
 };
 
 #endif // PTI_TOOLS_ONEPROF_PROF_OPTIONS_H_

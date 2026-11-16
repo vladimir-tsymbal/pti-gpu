@@ -52,19 +52,22 @@ metrics-discovery-i915-pvc:
     - intel-metrics-discovery-dev=1.14.180-1146~24.04
     - intel-metrics-library=1.0.196-1146~24.04
 level-zero-loader-xe-bmg:
-  apt:
-    # Ubuntu 26.04 universe
-    packages:
-    - libze1=1.28.2-2
-    - libze-dev=1.28.2-2
+  github:
+    # Release debs (no Ubuntu 26.04 build; the 24.04 one works), signed:
+    # check the .sig files. compute-runtime 26.40 needs loader 1.34 or newer:
+    # with Ubuntu's 1.28 every SYCL application crashes in the Level Zero v2
+    # adapter.
+    commands:
+    - sudo apt-get install -y ./libze1_1.34.0+u24.04_amd64.deb ./libze-dev_1.34.0+u24.04_amd64.deb
+    url: https://github.com/oneapi-src/level-zero/releases/tag/v1.34.0
 compute-runtime-xe-bmg:
-  apt:
-    # Ubuntu 26.04 universe
-    packages:
-    - intel-opencl-icd=26.05.37020.3-1
-    - libze-intel-gpu1=26.05.37020.3-1
-    - libigc2=2.28.4-4
-    - libigdgmm12=22.9.0+ds1-1
+  github:
+    # The packages of IGC v2.42.6 come from its release page (installed in
+    # /usr/local/lib, next to Ubuntu's libigc2). Check them with ww40.sum and
+    # the IGC release's sha256 sums.
+    commands:
+    - sudo apt-get install -y ./intel-igc-core-2_2.42.6+23070_amd64.deb ./intel-igc-opencl-2_2.42.6+23070_amd64.deb ./intel-ocloc_26.40.40196.8-0_amd64.deb ./intel-opencl-icd_26.40.40196.8-0_amd64.deb ./libigdgmm12_22.10.2_amd64.deb ./libze-intel-gpu1_26.40.40196.8-0_amd64.deb
+    url: https://github.com/intel/compute-runtime/releases/tag/26.40.40196.8
 metrics-discovery-xe-bmg:
   github:
     # Not packaged for Ubuntu 26.04

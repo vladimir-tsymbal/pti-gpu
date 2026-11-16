@@ -27,6 +27,11 @@ def run(path, option):
     app_folder = utils.get_sample_executable_path("cl_gemm")
     app_file = os.path.join(app_folder, "cl_gemm")
     command = ["./oneprof", "-k", "-a", app_file, "gpu", "1024", "1"]
+  elif option == "cl-e":
+    app_folder = utils.get_sample_executable_path("cl_gemm")
+    app_file = os.path.join(app_folder, "cl_gemm")
+    command = ["./oneprof", "-e", "--hot-instructions", str(CL_HOT_COUNT),
+               app_file, "gpu", "1024", "1"]
   elif option == "ze":
     app_folder = utils.get_sample_executable_path("ze_gemm")
     app_file = os.path.join(app_folder, "ze_gemm")
@@ -40,10 +45,14 @@ def run(path, option):
     app_file = os.path.join(app_folder, "dpc_gemm")
     command = ["./oneprof", option, app_file, "gpu", "1024", "1"]
   stdout, stderr = utils.run_process(command, path)
-  if option == "-e" and stderr.find(
+  if option in ("-e", "cl-e") and stderr.find(
       "Metric group EuStallSampling is not available") != -1:
     utils.skip("no EuStallSampling metric group on the device " +
                "(not supported, or metric streams not allowed)")
+  if option == "cl-e" and stderr.find(
+      "OpenCL kernels are not mapped to EU stall samples") != -1:
+    utils.skip("OpenCL kernels are mapped only with compute runtime " +
+               "25.48 or newer")
   if not stdout:
     return "stdout is empty"
   if not stderr:
@@ -54,12 +63,18 @@ def run(path, option):
     return stderr
   if option == "-e":
     return check_stall_sampling(stderr)
+  if option == "cl-e":
+    return check_stall_sampling(stderr, CL_HOT_COUNT)
   return None
+
+# cl-e: the OpenCL GEMM kernel is mapped, and --hot-instructions limits its
+# hot instruction list.
+CL_HOT_COUNT = 3
 
 # -e: the GEMM kernel has a row in the stall table with samples, and a hot
 # instruction list (the disassembly in it needs IGA, so it isn't checked).
 # oneprof prints its report to stderr unless -o is given.
-def check_stall_sampling(report):
+def check_stall_sampling(report, hot_count=None):
   if report.find("== EU Stall Sampling ==") == -1:
     return report
   for line in report.splitlines():
@@ -71,6 +86,23 @@ def check_stall_sampling(report):
     return "no EU stall samples for the GEMM kernel:\n" + report
   if report.find("== Hot Instructions: ") == -1:
     return report
+  if hot_count is not None:
+    # rows of the GEMM kernel's list: after its header line, up to the next
+    # empty line
+    lines = report.splitlines()
+    for i, line in enumerate(lines):
+      if line.startswith("== Hot Instructions: ") and line.find("GEMM") != -1:
+        break
+    else:
+      return "no hot instruction list for the GEMM kernel:\n" + report
+    rows = 0
+    for line in lines[i + 3:]:
+      if not line.startswith("0x"):
+        break
+      rows += 1
+    if rows < 1 or rows > hot_count:
+      return "expected 1.." + str(hot_count) + " hot instructions for " + \
+          "the GEMM kernel, got " + str(rows) + ":\n" + report
   return None
 
 def main(option):
@@ -78,7 +110,7 @@ def main(option):
   if option != "-i": # -i collects kernel intervals only, no metric stream
     utils.require_perf_access()
   path = utils.get_tool_build_path("oneprof")
-  if option == "cl":
+  if option in ("cl", "cl-e"):
     log = cl_gemm.main("gpu")
   elif option == "ze":
     log = ze_gemm.main(None)
@@ -112,6 +144,8 @@ if __name__ == "__main__":
     option = "-e"
   if len(sys.argv) > 1 and sys.argv[1] == "cl":
     option = "cl"
+  if len(sys.argv) > 1 and sys.argv[1] == "cl-e":
+    option = "cl-e"
   if len(sys.argv) > 1 and sys.argv[1] == "ze":
     option = "ze"
   if len(sys.argv) > 1 and sys.argv[1] == "omp":

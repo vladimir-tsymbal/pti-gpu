@@ -158,7 +158,7 @@ All the API calls and kernels, which submission happens while collection disable
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime) to run on GPU
 - [Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes](https://www.intel.com/content/www/us/en/developer/articles/tool/opencl-drivers.html#cpu-section) to run on CPU
 
-**OpenCL tracing extension:** OpenCL tracing uses the Intel tracing extension (`clCreateTracingHandleINTEL` and related functions), which the tool looks up with `clGetExtensionFunctionAddressForPlatform`. It isn't listed in the device extension strings. The Intel OpenCL runtimes for GPU (compute-runtime, checked with 25.18 and 26.05) and for CPU provide it. With a runtime that doesn't, the tool prints `[WARNING] The OpenCL runtime does not provide the Intel tracing extension (clCreateTracingHandleINTEL)` and collects no OpenCL data.
+**OpenCL tracing extension:** OpenCL tracing uses the Intel tracing extension (`clCreateTracingHandleINTEL` and related functions), which the tool looks up with `clGetExtensionFunctionAddressForPlatform`. It isn't listed in the device extension strings. The Intel OpenCL runtimes for GPU (compute-runtime, checked with 25.18, 26.05 and 26.40) and for CPU provide it. With a runtime that doesn't, the tool prints `[WARNING] The OpenCL runtime does not provide the Intel tracing extension (clCreateTracingHandleINTEL)` and collects no OpenCL data.
 
 ## Build and Run
 ### Linux

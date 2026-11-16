@@ -11,7 +11,8 @@ Options:
 --kernel-metrics [-k]            Collect over-time metrics for each kernel instance
 --aggregation [-a]               Collect aggregated metrics for each kernel instance in time-based mode
 --kernel-query [-q]              Collect aggregated metrics for each kernel instance in query-based mode
---stall-sampling [-e]            Collect EU stall sampling: stall reasons for each kernel and its hottest instructions (Level Zero kernels)
+--stall-sampling [-e]            Collect EU stall sampling: stall reasons for each kernel and its hottest instructions (Level Zero and OpenCL kernels)
+--hot-instructions <N>           Hottest instructions listed per kernel with -e (default is 10, 0 lists all)
 --device [-d] <ID>               Target device for profiling (default is 0)
 --group [-g] <NAME>              Target metric group to collect (default is ComputeBasic)
 --sampling-interval [-s] <VALUE> Sampling interval for metrics collection in us (default is 1000 us)
@@ -88,7 +89,7 @@ Group 1: ComputeBasic (ComputeBasic)
     ...
 ```
 
-**EU Stall Sampling** mode (`-e`) samples the instruction pointers of the EU threads and the reason each thread is stalled (the time-based `EuStallSampling` metric group). The samples are summed for each kernel, with each stall reason as a percentage of the kernel's samples, and for each kernel's ten hottest instructions (the offset in the kernel, the most frequent reason, and the instruction disassembled with IGA), e.g. for [ze_gemm](../../samples/ze_gemm) on Intel(R) Arc(TM) B570 Graphics:
+**EU Stall Sampling** mode (`-e`) samples the instruction pointers of the EU threads and the reason each thread is stalled (the time-based `EuStallSampling` metric group). The samples are summed for each kernel, with each stall reason as a percentage of the kernel's samples, and for each kernel's ten hottest instructions (`--hot-instructions <N>` lists another number, `0` all of them) (the offset in the kernel, the most frequent reason, and the instruction disassembled with IGA), e.g. for [ze_gemm](../../samples/ze_gemm) on Intel(R) Arc(TM) B570 Graphics:
 ```
 == EU Stall Sampling ==
 
@@ -104,7 +105,9 @@ Offset,Samples,Top Reason,Instruction,
 0x2b8,273,Active,"(W) cmp (32|M0) (lt)f1.0 null<1>:d r4.8<0;1,0>:d r5.4<0;1,0>:d {I@1}",
 ...
 ```
-- Only kernels created through Level Zero (including DPC++ and OpenMP offload on Level Zero) are mapped; samples in other code (OpenCL kernels, kernels the runtime creates internally) are reported as `<unknown>`.
+- Kernels created through Level Zero (including DPC++ and OpenMP offload on Level Zero) and OpenCL kernels enqueued on the target device are mapped; samples in other code (e.g. kernels the runtime creates internally) are reported as `<unknown>`.
+- OpenCL kernels are mapped only with compute runtime 25.48 or newer: older versions report a GPU address that is not the one the kernel runs from, so oneprof doesn't map OpenCL kernels there (an `[INFO]` line says so) and their samples are reported as `<unknown>`.
+- `--hot-instructions` is applied when the report is printed, so `oneprof -e -f <result file> --hot-instructions <N>` prints a stall sampling result again with another number of instructions.
 - `-e` always uses the `EuStallSampling` group and can be combined with `-m` (raw stall reports) and `-i`, not with `-k`, `-a`, `-q` or another `-g`. `-s` sets the sampling interval.
 - The group exists on both tested GPUs. With the xe kernel driver it is listed only when `/proc/sys/dev/xe/observation_paranoid` is 0; if the device has no such group, oneprof lists the available groups and exits.
 - The instruction disassembly needs the IGA library (`libiga64`, part of the compute runtime) at build time; without it (and on Windows) the `Instruction` column is empty.

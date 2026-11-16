@@ -78,7 +78,8 @@ class Profiler {
 
       if (profiler->CheckOption(PROF_STALL_SAMPLING)) {
         // Without it all stall samples are reported as <unknown>.
-        profiler->kernel_isa_collector_ = KernelIsaCollector::Create(driver);
+        profiler->kernel_isa_collector_ = KernelIsaCollector::Create(
+            driver, GetClDevice(options.GetDeviceId()));
       }
 
       if (profiler->CheckOption(PROF_KERNEL_INTERVALS) ||

@@ -51,8 +51,8 @@ You may obtain a copy of the License at <https://opensource.org/license/MIT>
 | GPU | Intel® Data Center GPU Max 1550 | Intel® Arc™ B570 Graphics | Intel® Arc™ Pro B70 Graphics (xe) and an Arrow Lake iGPU (i915) |
 | OS, kernel | Ubuntu 24.04, 6.8 | Ubuntu 26.04, 7.0 | Ubuntu 24.04, 7.0 (HWE) |
 | Kernel driver | i915 out-of-tree DKMS 1.25.2 | xe (in-tree) | xe and i915 (in-tree) |
-| Compute runtime | 25.18 | 26.05 | 26.27 |
-| Level Zero loader (headers) | 1.24 (1.13) | 1.28 (1.15) | 1.32 (1.15) |
+| Compute runtime | 25.18 | 26.40 | 26.27 |
+| Level Zero loader (headers) | 1.24 (1.13) | 1.34 (1.19) | 1.32 (1.17) |
 | oneAPI | 2026.2 | 2026.2 | 2026.2 |
 | Metrics Discovery API, Metrics Library | 1.14.180, 1.0.196 | 1.16.199, 1.0.249 (built from source) | 1.16.199, 1.0.249 (built from source) |
 | GT Pin | 5.0.0 | 5.0.0 | 5.0.0 |
