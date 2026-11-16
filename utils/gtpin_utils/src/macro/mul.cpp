@@ -85,7 +85,10 @@ GtGenProcedure MulTgl(const IGtKernelInstrument& instrumentor, const GtDstRegion
     auto& coder = instrumentor.Coder();
     auto& vregs = coder.VregFactory();
     GtReg tmpReg0;
-    /// TODO: register collision check
+    // Only an identical dst and source register is detected (GTPin has no
+    // overlap query). The callers in capsule.cpp pass dst == src0 or
+    // unrelated (scratch) registers; a partially overlapping dst would be
+    // clobbered before the sources are read.
     if (dst.Reg() == src0.Reg() || dst.Reg() == src1.Reg()) {
       tmpReg0 = vregs.MakeMsgDataScratch(Macro::GetVregTypeBytes(dst.DataType().Size()));
     } else {
@@ -231,7 +234,10 @@ GtGenProcedure MulXeHpc(const IGtKernelInstrument& instrumentor, const GtDstRegi
     auto& coder = instrumentor.Coder();
     auto& vregs = coder.VregFactory();
     GtReg tmpReg0;
-    /// TODO: register collision check
+    // Only an identical dst and source register is detected (GTPin has no
+    // overlap query). The callers in capsule.cpp pass dst == src0 or
+    // unrelated (scratch) registers; a partially overlapping dst would be
+    // clobbered before the sources are read.
     if (dst.Reg() == src0.Reg() || dst.Reg() == src1.Reg()) {
       tmpReg0 = vregs.MakeMsgDataScratch(Macro::GetVregTypeBytes(dst.DataType().Size()));
     } else {
@@ -409,7 +415,10 @@ GtGenProcedure MuliTgl(const IGtKernelInstrument& instrumentor, const GtDstRegio
     auto& coder = instrumentor.Coder();
     auto& vregs = coder.VregFactory();
     GtReg tmpReg0;
-    /// TODO: appropriate register collision check
+    // Only an identical dst and source register is detected (GTPin has no
+    // overlap query). The callers in capsule.cpp pass dst == src0 or
+    // unrelated (scratch) registers; a partially overlapping dst would be
+    // clobbered before the sources are read.
     if (dst.Reg() == src0.Reg()) {
       tmpReg0 = vregs.MakeMsgDataScratch(Macro::GetVregTypeBytes(dst.DataType().Size()));
     } else {
@@ -550,7 +559,10 @@ GtGenProcedure MuliXeHpc(const IGtKernelInstrument& instrumentor, const GtDstReg
     auto& coder = instrumentor.Coder();
     auto& vregs = coder.VregFactory();
     GtReg tmpReg0;
-    /// TODO: appropriate register collision check
+    // Only an identical dst and source register is detected (GTPin has no
+    // overlap query). The callers in capsule.cpp pass dst == src0 or
+    // unrelated (scratch) registers; a partially overlapping dst would be
+    // clobbered before the sources are read.
     if (dst.Reg() == src0.Reg()) {
       tmpReg0 = vregs.MakeMsgDataScratch(Macro::GetVregTypeBytes(dst.DataType().Size()));
     } else {

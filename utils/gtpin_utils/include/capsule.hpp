@@ -307,7 +307,7 @@ class Capsule {
   ~Capsule() = default;
 
   void AppendProcedure(GtGenProcedure& proc);
-  /// TODO: operator +
+  /// Procedures are appended with AppendProcedure (no operator+).
   GtGenProcedure GetProcedure() const;
 
   /// Getters
