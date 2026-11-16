@@ -123,6 +123,8 @@ unsetenv("PTI_ENABLE_COLLECTION");
 ```
 All the API calls and kernels, which submission happens while collection disabled interval, will be omitted from final results.
 
+**Traced Level Zero APIs:** Call logging and host timing (`-c`, `-h`, `--chrome-call-logging`) cover every API of the Level Zero headers that the tool is built with: the callbacks are generated from them at build time (`gen_tracing_callbacks.py`). The 1.0 APIs are registered with `zelTracerSetPrologues/Epilogues`. Newer ones, e.g. `zeCommandListAppendLaunchKernelWithArguments`, which the SYCL Level Zero v2 adapter uses for kernel launches, are registered with the per-API `zelTracer*RegisterCallback` functions of the loader. These are looked up at run time, so APIs that the installed loader doesn't know are skipped. Driver extension functions that an application gets with `zeDriverGetExtensionFunctionAddress` (e.g. `zexCounterBasedEventCreate2`) are called directly, bypassing the loader, and are not traced.
+
 ## Supported OS
 - Linux
 - Windows (*under development*)

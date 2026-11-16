@@ -341,8 +341,10 @@ GtGenProcedure Procedure::CacheLinesCount(const IGtKernelInstrument& instrumento
                                           GtReg clCounterReg, GtReg simdMaskReg, uint32_t execSize,
                                           GtReg addrRegCheckReg, size_t channelOffset,
                                           const uint32_t addrWidthBytes, GtReg flagReg) {
-  /// TODO: Check registers for minimal requirements
-  /// TODO: Check that clCounter reg is at least DWORD
+  // clCounterReg is used through its low DWORD below. The other registers
+  // are scratch registers allocated here, so they need no checks.
+  PTI_ASSERT(clCounterReg.IsValid() && clCounterReg.ElementSize() >= sizeof(uint32_t) &&
+             "Cache line counter register must be at least a DWORD");
 
   const IGtGenCoder& coder = instrumentor.Coder();
   IGtInsFactory& insF = coder.InstructionFactory();
@@ -378,7 +380,7 @@ GtGenProcedure Procedure::CacheLinesCount(const IGtKernelInstrument& instrumento
   proc +=
       insF.MakeRegZero(clCounterReg)
           .AppendAnnotation((std::string(__FUNCTION__) + std::string(":clCounterRegInit")).c_str());
-  /// TODO: do it only in case of size of clCounterReg32 more than 32bits
+  // The DWORD view is also valid (if redundant) for a 32-bit counter register.
   GtReg clCounterReg32 = {clCounterReg, sizeof(uint32_t), 0};
 
   /// fill Cacheline storage with unique cache lines, calc unique CL number in
@@ -564,12 +566,15 @@ void Analysis::StrideDistrCalc(Capsule& capsule, const IGtIns& gtpinIns, int32_t
 
 void Analysis::DumpFirstAddresses(Capsule& capsule, const IGtIns& gtpinIns,
                                   uint64_t addrArrayOffsetBytes, uint64_t alreadyDumpedFlag) {
-  // TODO: dump only first SIMD access
-  // TODO: size of dumped addr should be passed into capsule (addrArrayOffsetBytes + 8 * i)
+  // Stores the address of every SIMD channel (not only the first access) as
+  // 8 bytes each at addrArrayOffsetBytes: the record array must hold
+  // GTPIN_UTILS_MAX_SIMD_WIDTH uint64_t values, as in memaccess
+  // (MemAccessRawRecord::addresses). The tool decides when to sample.
 
   GtReg data64Reg = capsule.GetMsgData64Reg();
 
   DcSendMsg msg(gtpinIns.GetGedIns());
+  PTI_ASSERT(msg.SimdWidth() <= GTPIN_UTILS_MAX_SIMD_WIDTH && "Incorrect SIMD width");
   GtReg addrRegCheckReg = GrfReg(msg.Src0(), 0, msg.AddrSize());
   uint32_t grfRegSize = capsule.GetInsFactory().GenModel().GrfRegSize();  // bytes
 

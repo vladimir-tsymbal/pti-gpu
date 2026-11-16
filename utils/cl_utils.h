@@ -119,7 +119,7 @@ inline cl_device_id GetDeviceParent(cl_device_id device) {
   cl_device_id parent = nullptr;
   cl_int status = clGetDeviceInfo(
       device, CL_DEVICE_PARENT_DEVICE, sizeof(cl_device_id), &parent, nullptr);
-  PTI_ASSERT(status != CL_SUCCESS);
+  PTI_ASSERT(status == CL_SUCCESS);
 
   return parent;
 }

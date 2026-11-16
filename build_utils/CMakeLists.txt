@@ -14,6 +14,12 @@ macro(RequirePythonInterp)
 endmacro()
 
 macro(SetCompilerFlags)
+  # The code needs C++17 (e.g. inline constexpr variables). Set it instead of
+  # relying on the compiler default; -DCMAKE_CXX_STANDARD=<n> can raise it.
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+  endif()
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
   if(WIN32)
     set(ADD_FLAGS " ")
     add_definitions(-DNOMINMAX)
@@ -427,9 +433,9 @@ macro(GetGTPinPackage)
   if(NOT DEFINED GTPIN_PATH)
     if(NOT DEFINED GTPIN_LINK)
       if(UNIX)
-        set(GTPIN_LINK https://downloadmirror.intel.com/867025/external-release-gtpin-4.6.4-linux.tar.xz)
+        set(GTPIN_LINK https://downloadmirror.intel.com/924057/external-release-gtpin-5.0.0-linux.tar.xz)
       elseif(WIN32)
-        set(GTPIN_LINK https://downloadmirror.intel.com/867025/external-release-gtpin-4.6.4-win.zip)
+        set(GTPIN_LINK https://downloadmirror.intel.com/924057/external-release-gtpin-5.0.0-win.zip)
       else()
         message(FATAL_ERROR "Graphics Technology Pin (GT Pin) is not supported for the platform")
       endif()
@@ -439,7 +445,7 @@ macro(GetGTPinPackage)
     # timeout does not cover a stalled TCP connect (e.g. a proxy
     # misconfiguration), so an unreachable host used to hang configure forever.
     set(GTPIN_DOWNLOAD_PAGE
-      "https://www.intel.com/content/www/us/en/download/730596/867025/gtpin.html")
+      "https://www.intel.com/content/www/us/en/download/730596/924057/gtpin.html")
     if(NOT DEFINED GTPIN_DOWNLOAD_TIMEOUT)
       set(GTPIN_DOWNLOAD_TIMEOUT 900)
     endif()
@@ -679,6 +685,8 @@ macro(FindL0Headers TARGET)
   set(CMAKE_REQUIRED_INCLUDES)
 endmacro()
 
+# Generates tracing.gen (Level Zero tracing callbacks) with L0_GEN_SCRIPT from
+# the Level Zero headers; extra arguments are passed to the script.
 macro(FindL0HeadersPath TARGET L0_GEN_SCRIPT)
   RequirePythonInterp()
   find_path(L0_INC_PATH
@@ -696,7 +704,8 @@ macro(FindL0HeadersPath TARGET L0_GEN_SCRIPT)
   add_custom_target(ze_gen_headers ALL
                     DEPENDS ${L0_GEN_INC_PATH}/tracing.gen)
   add_custom_command(OUTPUT ${L0_GEN_INC_PATH}/tracing.gen
-                     COMMAND "${PYTHON_EXECUTABLE}" ${L0_GEN_SCRIPT} ${L0_GEN_INC_PATH} "${L0_INC_PATH}/level_zero")
+                     COMMAND "${PYTHON_EXECUTABLE}" ${L0_GEN_SCRIPT} ${L0_GEN_INC_PATH} "${L0_INC_PATH}/level_zero" ${ARGN}
+                     DEPENDS ${L0_GEN_SCRIPT})
   if(TARGET level_zero_headers)
     # The headers are downloaded at build time (FindL0Headers fallback);
     # generate the callbacks only after they exist.

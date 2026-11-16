@@ -148,6 +148,8 @@ unsetenv("PTI_ENABLE_COLLECTION");
 ```
 All the API calls and kernels, which submission happens while collection disabled interval, will be omitted from final results.
 
+**Traced Level Zero APIs:** Level Zero call logging and host timing (`-c`, `-h`, `--chrome-call-logging`) cover every API of the Level Zero headers that the tool is built with: the callbacks are generated from them at build time (`../ze_tracer/gen_tracing_callbacks.py`). The 1.0 APIs are registered with `zelTracerSetPrologues/Epilogues`. Newer ones, e.g. `zeCommandListAppendLaunchKernelWithArguments`, which the SYCL Level Zero v2 adapter uses for kernel launches, are registered with the per-API `zelTracer*RegisterCallback` functions of the loader. These are looked up at run time, so APIs that the installed loader doesn't know are skipped. Driver extension functions that an application gets with `zeDriverGetExtensionFunctionAddress` (e.g. `zexCounterBasedEventCreate2`) are called directly, bypassing the loader, and are not traced.
+
 ## Supported OS
 - Linux
 - Windows (*under development*)
@@ -160,6 +162,8 @@ All the API calls and kernels, which submission happens while collection disable
 - [oneAPI Level Zero loader](https://github.com/oneapi-src/level-zero)
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime) to run on GPU
 - [Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes](https://software.intel.com/en-us/articles/opencl-drivers#cpu-section) to run on CPU
+
+**OpenCL tracing extension:** OpenCL tracing (OpenCL API calls and kernels) uses the Intel tracing extension (`clCreateTracingHandleINTEL` and related functions), which the tool looks up with `clGetExtensionFunctionAddressForPlatform`. It isn't listed in the device extension strings. The Intel OpenCL runtimes for GPU (compute-runtime, checked with 25.18 and 26.05) and for CPU provide it. With a runtime that doesn't, the tool prints `[WARNING] The OpenCL runtime does not provide the Intel tracing extension (clCreateTracingHandleINTEL)` and collects no OpenCL data; Level Zero tracing is not affected.
 
 ## Build and Run
 ### Linux

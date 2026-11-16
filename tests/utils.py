@@ -86,6 +86,24 @@ def check_device_timing(command, stderr, kernel=None):
             "report:\n" + (stderr or ""))
   return None
 
+def check_api_tracing(command, stderr):
+  """Returns an error if an API tracing (-c, -h; always for ze_hot_functions)
+  run doesn't list the API that launched the GEMM kernel.
+
+  Launch APIs the tracer doesn't register (e.g. the
+  zeCommandListAppendLaunchKernelWithArguments launches of the SYCL Level
+  Zero v2 adapter) are otherwise silently missing from the output."""
+  tool = os.path.basename(str(command[0]))
+  if tool != "ze_hot_functions" and "-c" not in command and \
+     "-h" not in command:
+    return None
+  is_cl = any(str(arg).endswith("cl_gemm") for arg in command)
+  api = "clEnqueueNDRangeKernel" if is_cl else "zeCommandListAppendLaunch"
+  if not stderr or stderr.find(api) == -1:
+    return ("Kernel launch API " + api + "* is missing from the API " +
+            "tracing output:\n" + (stderr or ""))
+  return None
+
 _sycl_l0_v2 = None
 
 def sycl_uses_level_zero_v2():
@@ -197,5 +215,12 @@ def run_process(command, path, environ = None):
     _kill(p)
     p.communicate()
     raise TestTimeout(" ".join(command))
+
+  # The OpenCL tracing tools need the Intel tracing extension of the OpenCL
+  # runtime (utils/cl_api_tracer.h reports it once if it is missing).
+  if stderr and stderr.find("Intel tracing extension " +
+                            "(clCreateTracingHandleINTEL)") != -1:
+    skip("the OpenCL runtime does not provide clCreateTracingHandleINTEL " +
+         "(Intel OpenCL tracing extension)")
 
   return stdout, stderr

@@ -5,7 +5,7 @@
 // =============================================================
 
 #include "ze_api_collector.h"
-#include "ze_api_callbacks.h"
+#include <tracing.gen> // Auto-generated callbacks (SetTracingFunctions)
 
 static ZeApiCollector* collector = nullptr;
 static std::chrono::steady_clock::time_point start;

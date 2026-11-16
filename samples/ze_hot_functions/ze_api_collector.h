@@ -17,6 +17,7 @@
 #include <level_zero/layers/zel_tracing_api.h>
 
 #include "utils.h"
+#include "ze_tracing_ext.h"
 #include "ze_utils.h"
 
 struct ZeFunction {
