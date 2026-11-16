@@ -14,6 +14,8 @@
 #include <thread>
 #include <vector>
 
+#include <CL/cl_ext.h>
+
 #include "cl_utils.h"
 #include "metric_device.h"
 #include "perf_access.h"
@@ -27,7 +29,12 @@ enum CollectorState {
 
 class ClMetricCollector {
  public:
-  static ClMetricCollector* Create(const char* set_name) {
+  // Without PTI_DEVICE_ID, the metrics come from the GPU at the PCI address
+  // of device (the one the kernels are collected for), if MD API has it:
+  // with several GPUs (e.g. a dGPU and an iGPU) the first adapter may be
+  // another GPU.
+  static ClMetricCollector* Create(const char* set_name,
+                                   cl_device_id device = nullptr) {
     PTI_ASSERT(set_name != nullptr);
 
     std::string device_string = utils::GetEnv("PTI_DEVICE_ID");
@@ -40,6 +47,21 @@ class ClMetricCollector {
     std::string order_string = utils::GetEnv("PTI_DEVICE_PCI_ORDER");
     bool respect_device_pci_order =
       order_string.empty() ? false : true;
+
+#if defined(CL_DEVICE_PCI_BUS_INFO_KHR)
+    if (device_string.empty() && device != nullptr) {
+      cl_device_pci_bus_info_khr pci{};
+      if (clGetDeviceInfo(device, CL_DEVICE_PCI_BUS_INFO_KHR, sizeof(pci),
+                          &pci, nullptr) == CL_SUCCESS) {
+        int id = MetricDevice::FindDeviceId(
+            pci.pci_bus, pci.pci_device, pci.pci_function);
+        if (id >= 0) {
+          device_id = static_cast<uint32_t>(id);
+          respect_device_pci_order = false;  // id is in the group's order
+        }
+      }
+    }
+#endif
 
     MetricDevice* metric_device =
       MetricDevice::Create(device_id, sub_device_id, respect_device_pci_order);
