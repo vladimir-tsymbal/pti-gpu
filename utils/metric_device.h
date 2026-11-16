@@ -39,6 +39,40 @@ class MetricDevice {
     return device_count;
   }
 
+  // The index (in the adapter group's own order, as Create() takes it without
+  // respect_device_pci_order) of the adapter at a PCI address, or -1.
+  static int FindDeviceId(uint32_t bus, uint32_t device, uint32_t function) {
+    SharedLibrary* lib = OpenMetricsLibrary();
+    if (lib == nullptr) {
+      return -1;
+    }
+
+    md::OpenAdapterGroup_fn OpenAdapterGroup =
+      lib->GetSym<md::OpenAdapterGroup_fn>("OpenAdapterGroup");
+    PTI_ASSERT(OpenAdapterGroup != nullptr);
+
+    md::IAdapterGroupLatest* adapter_group = nullptr;
+    md::TCompletionCode status = OpenAdapterGroup(&adapter_group);
+    PTI_ASSERT(status == md::CC_OK || status == md::CC_ALREADY_INITIALIZED);
+    PTI_ASSERT(adapter_group != nullptr);
+
+    int device_id = -1;
+    uint32_t adapter_count = adapter_group->GetParams()->AdapterCount;
+    for (uint32_t i = 0; i < adapter_count; ++i) {
+      md::IAdapterLatest* adapter = adapter_group->GetAdapter(i);
+      PTI_ASSERT(adapter != nullptr);
+      const md::SAdapterParams_1_9* params = adapter->GetParams();
+      if (params->BusNumber == bus && params->DeviceNumber == device &&
+          params->FunctionNumber == function) {
+        device_id = static_cast<int>(i);
+        break;
+      }
+    }
+
+    delete lib;
+    return device_id;
+  }
+
   static uint32_t GetSubDeviceCount(uint32_t device_id) {
     SharedLibrary* lib = OpenMetricsLibrary();
     if (lib == nullptr) {

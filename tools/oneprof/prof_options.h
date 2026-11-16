@@ -20,6 +20,12 @@
 #define PROF_AGGREGATION       3
 #define PROF_KERNEL_QUERY      4
 #define PROF_NO_FINALIZE       5
+#define PROF_STALL_SAMPLING    6
+
+// The time-based metric group that --stall-sampling [-e] streams.
+static const char kStallSamplingGroup[] = "EuStallSampling";
+// Instructions listed per kernel in the --stall-sampling report.
+static const size_t kStallHotInstructionCount = 10;
 
 class ProfOptions {
  public:

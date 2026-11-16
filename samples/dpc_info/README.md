@@ -49,7 +49,7 @@ The following modes are implemented:
 - Windows (not validated)
 
 ## Tested Configurations
-- Devices: lists every SYCL device; tested with Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver) and the OpenCL(TM) CPU device; other devices are not tested
+- Devices: lists every SYCL device; tested with Intel(R) Data Center GPU Max 1550 (i915 kernel driver), Intel(R) Arc(TM) B570 and Arc(TM) Pro B70 Graphics (xe kernel driver), and an Arrow Lake iGPU (i915 kernel driver) and the OpenCL(TM) CPU device; other devices are not tested
 - Software: the versions listed in [SOFTWARE](../../SOFTWARE)
 
 ## Prerequisites

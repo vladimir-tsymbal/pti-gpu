@@ -35,8 +35,9 @@ You may obtain a copy of the License at <https://opensource.org/license/MIT>
 
 ## Supported Platforms
 
-- Intel® Data Center GPU Max Series and Intel® Arc™ B-Series Graphics are
-  tested in this fork (see below).
+- Intel® Data Center GPU Max Series, Intel® Arc™ B-Series and Arc™ Pro
+  B-Series Graphics, and an Arrow Lake iGPU are tested in this fork (see
+  below).
 - Upstream also listed Intel® Processor Graphics Gen9 (formerly Skylake)
   and newer, Intel® Iris® Xe Graphics, Intel® Data Center GPU Flex Series
   and other Intel® Arc™ Graphics. These are not tested in this fork.
@@ -45,19 +46,25 @@ You may obtain a copy of the License at <https://opensource.org/license/MIT>
 
 ## Tested Configurations
 
-| | i915 | xe |
-|---|---|---|
-| GPU | Intel® Data Center GPU Max 1550 | Intel® Arc™ B570 Graphics |
-| OS, kernel | Ubuntu 24.04, 6.8 | Ubuntu 26.04, 7.0 |
-| Kernel driver | i915 out-of-tree DKMS 1.25.2 | xe (in-tree) |
-| Compute runtime | 25.18 | 26.05 |
-| Level Zero loader (headers) | 1.24 (1.13) | 1.28 (1.15) |
-| oneAPI | 2026.2 | 2026.2 |
-| Metrics Discovery API, Metrics Library | 1.14.180, 1.0.196 | 1.16.199, 1.0.249 (built from source) |
-| GT Pin | 5.0.0 | 5.0.0 |
+| | i915 | xe | xe + i915 (one host, two GPUs) |
+|---|---|---|---|
+| GPU | Intel® Data Center GPU Max 1550 | Intel® Arc™ B570 Graphics | Intel® Arc™ Pro B70 Graphics (xe) and an Arrow Lake iGPU (i915) |
+| OS, kernel | Ubuntu 24.04, 6.8 | Ubuntu 26.04, 7.0 | Ubuntu 24.04, 7.0 (HWE) |
+| Kernel driver | i915 out-of-tree DKMS 1.25.2 | xe (in-tree) | xe and i915 (in-tree) |
+| Compute runtime | 25.18 | 26.05 | 26.27 |
+| Level Zero loader (headers) | 1.24 (1.13) | 1.28 (1.15) | 1.32 (1.15) |
+| oneAPI | 2026.2 | 2026.2 | 2026.2 |
+| Metrics Discovery API, Metrics Library | 1.14.180, 1.0.196 | 1.16.199, 1.0.249 (built from source) | 1.16.199, 1.0.249 (built from source) |
+| GT Pin | 5.0.0 | 5.0.0 | 5.0.0 |
 
-Every test of `tests/run.py` passes on both, except the ones skipped by
-design (see [Testing](#testing)). The metrics (OA) tests were run with
+Every test of `tests/run.py` passes on the first two, except the ones
+skipped by design (see [Testing](#testing)). On the third host each GPU was
+tested on its own (`ZE_AFFINITY_MASK=0` or `1`). Everything passes on the Arc
+Pro B70, except that `instcount` and `memaccess` skip SYCL (`dpc`): GT Pin
+5.0.0 finds no kernels there. On the Arrow Lake iGPU, `instcount` and
+`memaccess` skip (the applications fail under GT Pin 5.0.0), the metric query
+mode fails in the runtime (`cl_gpu_query`, `ze_metric_query`, `oneprof -q`),
+and the iGPU has no EU stall sampling (`oneprof -e` skips). The metrics (OA) tests were run with
 `perf_stream_paranoid=0` (i915, on a host with i915 DKMS 1.25.2.13, kernel
 6.8.0-60 and oneAPI 2025.3) and `observation_paranoid=0` (xe). Exact package
 versions and install steps: [SOFTWARE](SOFTWARE).
@@ -231,8 +238,9 @@ Options:
 
 Samples that need `icpx` (DPC++ and OpenMP) are skipped automatically if the
 compiler is not found, and the `*_debug_info` samples are skipped if the IGA
-library (`libiga64.so`) is not found. `instcount` and `memaccess` download
-GT Pin at configure time.
+library (`libiga64.so`) is not found (`oneprof` is then built without the
+instruction disassembly of `--stall-sampling`). `instcount` and `memaccess`
+download GT Pin at configure time.
 
 Per-tool packages can be created with CPack, e.g.:
 

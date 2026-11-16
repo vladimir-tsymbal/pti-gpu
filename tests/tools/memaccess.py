@@ -252,6 +252,7 @@ def checkGemmJsonData(data):
   return "No memory access data for the GEMM kernel in the JSON output"
 
 def isValidOutput(stdout, stderr):
+  utils.skip_if_gtpin_unsupported(stdout, stderr)
   if not stdout:
     return "stdout is empty"
   if not stderr:

@@ -42,6 +42,28 @@ def check_perf_access():
                 "or root (echo 0 | sudo tee " + path + ")")
   return None
 
+# GPUs the GTPin tools (instcount, memaccess) are validated on. On other GPUs
+# the pinned GTPin may find no kernels or break the application (seen on an
+# Arc Pro B70 with SYCL, and on an Arrow Lake iGPU): those tests SKIP there.
+GTPIN_VALIDATED_DEVICES = ["Data Center GPU Max 1550", "Arc(TM) B570"]
+
+def skip_if_gtpin_unsupported(stdout, stderr):
+  """Skips a GTPin tool test whose run failed on a GPU GTPin isn't validated
+  on: GTPin found no kernels, or the application failed under GTPin."""
+  device = None
+  for line in (stdout or "").splitlines():
+    if line.startswith("Target device: "):
+      device = line[len("Target device: "):].strip()
+      break
+  if device is None or any(name in device for name in GTPIN_VALIDATED_DEVICES):
+    return
+  if (stderr or "").find("GTPin didn't find any kernels") != -1:
+    skip("GTPin found no kernels on " + device +
+         " (not validated with the pinned GTPin)")
+  if (stdout or "").find(" CORRECT") == -1:
+    skip("the application fails under GTPin on " + device +
+         " (not validated with the pinned GTPin)")
+
 def require_perf_access():
   reason = check_perf_access()
   if reason:
