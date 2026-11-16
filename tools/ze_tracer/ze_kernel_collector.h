@@ -257,14 +257,16 @@ class ZeKernelCollector {
     for (auto& value : sorted_list) {
       const std::string& function = value.first;
       uint64_t call_count = value.second.call_count;
+      // A total can be 0: e.g. the append time on immediate command lists,
+      // where a command is appended and submitted by the same call.
       uint64_t append_duration = value.second.append_time;
-      float append_percent =
+      float append_percent = (total_append_duration == 0) ? 0.0f :
         100.0f * append_duration / total_append_duration;
       uint64_t submit_duration = value.second.submit_time;
-      float submit_percent =
+      float submit_percent = (total_submit_duration == 0) ? 0.0f :
         100.0f * submit_duration / total_submit_duration;
       uint64_t execute_duration = value.second.execute_time;
-      float execute_percent =
+      float execute_percent = (total_execute_duration == 0) ? 0.0f :
         100.0f * execute_duration / total_execute_duration;
       stream << std::setw(max_name_length) << function << "," <<
         std::setw(kCallsLength) << call_count << "," <<
