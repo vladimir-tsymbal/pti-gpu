@@ -114,8 +114,9 @@ static uint64_t GetDeviceMemSize(ze_device_handle_t device) {
 }
 
 static void PrintShorInfo(
-    ze_driver_handle_t driver, zes_device_handle_t device,
-    uint32_t device_id) {
+    ze_driver_handle_t driver, ze_device_handle_t core_device,
+    zes_device_handle_t device, uint32_t device_id) {
+  SYSMON_ASSERT(core_device != nullptr);
   SYSMON_ASSERT(device != nullptr);
   ze_result_t status = ZE_RESULT_SUCCESS;
 
@@ -135,7 +136,7 @@ static void PrintShorInfo(
   // as "unknown" rather than 0.
   ze_device_properties_t core_props{sysmon::GetDevicePropertiesType(driver), };
   const bool core_props_valid =
-      zeDeviceGetProperties(device, &core_props) == ZE_RESULT_SUCCESS;
+      zeDeviceGetProperties(core_device, &core_props) == ZE_RESULT_SUCCESS;
   auto print_count = [core_props_valid](uint32_t value) {
     if (core_props_valid && value > 0) {
       std::cout << value;
@@ -161,7 +162,11 @@ static void PrintShorInfo(
   std::cout << "Vendor: " << props.vendorName << SPACES;
   std::cout << "Driver Version: " <<
     GetDriverString(driver_props.driverVersion) << SPACES;
-  std::cout << "Subdevices: " << props.numSubdevices << std::endl;
+  // Sub-devices of the core device: with ZE_FLAT_DEVICE_HIERARCHY=FLAT each
+  // tile of a multi-tile GPU is a device without sub-devices, while Sysman
+  // counts the tiles of the whole GPU.
+  std::cout << "Subdevices: " <<
+    sysmon::GetSubDeviceList(core_device).size() << std::endl;
 
   std::cout << "EU Count: ";
   print_count(core_props.numSlices * core_props.numSubslicesPerSlice *
@@ -173,7 +178,7 @@ static void PrintShorInfo(
   std::cout << SPACES;
 
   std::cout << "Total Memory(MB): " << std::fixed << std::setprecision(3) <<
-    ToString(GetDeviceMemSize(device) / BYTES_IN_MB) << std::endl;
+    ToString(GetDeviceMemSize(core_device) / BYTES_IN_MB) << std::endl;
 
   uint32_t domain_count = 0;
   status = zesDeviceEnumFrequencyDomains(device, &domain_count, nullptr);
@@ -588,9 +593,23 @@ void PrintModuleInfo(ze_device_handle_t device) {
   std::cout << std::setfill(' ') << std::dec << std::endl;
 }
 
+// Whether a Sysman resource (onSubdevice, subdeviceId) belongs to a section
+// of -d: the sub-device section subdevice_id, or the device section if
+// subdevice_id is UINT32_MAX. The device section shows the resources of the
+// whole device and, if the device is one tile of a multi-tile GPU (FLAT
+// hierarchy; see sysmon::Device::tile), those of that tile.
+static bool InSection(ze_bool_t on_subdevice, uint32_t resource_subdevice_id,
+                      uint32_t subdevice_id, uint32_t tile) {
+  if (subdevice_id != UINT32_MAX) {
+    return on_subdevice && resource_subdevice_id == subdevice_id;
+  }
+  return !on_subdevice ||
+         (tile != UINT32_MAX && resource_subdevice_id == tile);
+}
+
 void PrintFrequencyInfo(
     zes_device_handle_t device,
-    uint32_t subdevice_id = UINT32_MAX) {
+    uint32_t subdevice_id = UINT32_MAX, uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
   uint32_t freq_domain_count = 0;
 
@@ -628,9 +647,8 @@ void PrintFrequencyInfo(
       status = zesFrequencyGetState(GPU_freq_domains[i], &state);
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
-      if ((freq_domain_props.onSubdevice &&
-          freq_domain_props.subdeviceId == subdevice_id) ||
-          (!freq_domain_props.onSubdevice && subdevice_id == UINT32_MAX)) {
+      if (InSection(freq_domain_props.onSubdevice, freq_domain_props.subdeviceId,
+                    subdevice_id, tile)) {
         double current_frequency =
           (state.actual < freq_domain_props.min) ?
           freq_domain_props.min : state.actual;
@@ -671,7 +689,8 @@ void PrintFrequencyInfo(
 }
 
 void PrintPowerInfo(
-    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX) {
+    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX,
+    uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
 
   uint32_t power_domain_count = 0;
@@ -691,9 +710,8 @@ void PrintPowerInfo(
           power_domain_list[i], &power_domain_props);
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
-      if ((power_domain_props.onSubdevice  &&
-          power_domain_props.subdeviceId == subdevice_id) ||
-          (!power_domain_props.onSubdevice && subdevice_id == UINT32_MAX)) {
+      if (InSection(power_domain_props.onSubdevice, power_domain_props.subdeviceId,
+                    subdevice_id, tile)) {
         std::cout << std::setw(TEXT_WIDTH) << std::left <<
           "Default TDP Power Limit (W)," <<
           (power_domain_props.defaultLimit == -1 ? UNKNOWN :
@@ -724,7 +742,8 @@ void PrintPowerInfo(
 }
 
 void PrintFirmwareInfo(
-    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX) {
+    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX,
+    uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
 
   uint32_t firmwares_count = 0;
@@ -743,9 +762,8 @@ void PrintFirmwareInfo(
       status = zesFirmwareGetProperties(firmwares[i], &firmwares_props);
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
-      if ((firmwares_props.onSubdevice  &&
-          firmwares_props.subdeviceId == subdevice_id) ||
-          (!firmwares_props.onSubdevice && subdevice_id == UINT32_MAX)) {
+      if (InSection(firmwares_props.onSubdevice, firmwares_props.subdeviceId,
+                    subdevice_id, tile)) {
         std::cout << std::setw(TEXT_WIDTH) << std::left <<
           "Firmware Name," << firmwares_props.name << std::endl;
 
@@ -761,19 +779,21 @@ void PrintFirmwareInfo(
 }
 
 void PrintMemoryInfo(
-    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX) {
+    ze_device_handle_t core_device, zes_device_handle_t device,
+    uint32_t subdevice_id = UINT32_MAX, uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
 
   if (subdevice_id == UINT32_MAX) {
     uint32_t mem_props_count = 0;
-    status = zeDeviceGetMemoryProperties(device, &mem_props_count, nullptr);
+    status = zeDeviceGetMemoryProperties(
+        core_device, &mem_props_count, nullptr);
     SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
     if (mem_props_count > 0) {
       std::vector<ze_device_memory_properties_t> mem_props_list(
           mem_props_count, {ZE_STRUCTURE_TYPE_DEVICE_MEMORY_PROPERTIES, });
       status = zeDeviceGetMemoryProperties(
-          device, &mem_props_count, mem_props_list.data());
+          core_device, &mem_props_count, mem_props_list.data());
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
       for (uint32_t i = 0; i < mem_props_count; ++i) {
@@ -846,9 +866,8 @@ void PrintMemoryInfo(
       status = zesMemoryGetProperties(mem_modules[i], &mem_props);
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
-      if ((mem_props.onSubdevice  &&
-          mem_props.subdeviceId == subdevice_id) ||
-          (!mem_props.onSubdevice && subdevice_id == UINT32_MAX)) {
+      if (InSection(mem_props.onSubdevice, mem_props.subdeviceId,
+                    subdevice_id, tile)) {
         std::cout << std::left << std::setw(TEXT_WIDTH) <<
           "Memory Type," << mem_types[mem_props.type] << std::endl;
 
@@ -890,7 +909,8 @@ void PrintMemoryInfo(
 }
 
 void PrintEngineInfo(
-    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX) {
+    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX,
+    uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
 
   uint32_t engine_groups_count = 0;
@@ -941,9 +961,8 @@ void PrintEngineInfo(
       status = zesEngineGetProperties(engine_groups[i], &engine_props);
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
-      if ((engine_props.onSubdevice  &&
-          engine_props.subdeviceId == subdevice_id) ||
-          (!engine_props.onSubdevice && subdevice_id == UINT32_MAX)) {
+      if (InSection(engine_props.onSubdevice, engine_props.subdeviceId,
+                    subdevice_id, tile)) {
         if (engine_map.count(engine_props.type) == 0) {
           engine_map[engine_props.type] = 1;
         } else {
@@ -971,7 +990,8 @@ void PrintEngineInfo(
 }
 
 void PrintFabricPortInfo(
-    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX) {
+    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX,
+    uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
 
   uint32_t fabric_ports_count = 0;
@@ -990,9 +1010,8 @@ void PrintFabricPortInfo(
       status = zesFabricPortGetProperties(farbic_ports[i], &fabric_port_props);
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
-      if ((fabric_port_props.onSubdevice  &&
-          fabric_port_props.subdeviceId == subdevice_id) ||
-          (!fabric_port_props.onSubdevice && subdevice_id == UINT32_MAX)) {
+      if (InSection(fabric_port_props.onSubdevice, fabric_port_props.subdeviceId,
+                    subdevice_id, tile)) {
         std::cout << std::left << std::setw(TEXT_WIDTH) <<
           "Fabric Port ID," <<
           fabric_port_props.portId.fabricId << std::endl;
@@ -1010,7 +1029,8 @@ void PrintFabricPortInfo(
 }
 
 void PrintFanInfo(
-    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX) {
+    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX,
+    uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
 
   uint32_t fan_count = 0;
@@ -1029,9 +1049,8 @@ void PrintFanInfo(
       status = zesFanGetProperties(fans[i], &fan_props);
       SYSMON_ASSERT(status == ZE_RESULT_SUCCESS);
 
-      if ((fan_props.onSubdevice  &&
-          fan_props.subdeviceId == subdevice_id) ||
-          (!fan_props.onSubdevice && subdevice_id == UINT32_MAX)) {
+      if (InSection(fan_props.onSubdevice, fan_props.subdeviceId,
+                    subdevice_id, tile)) {
         std::cout << std::left << std::setw(TEXT_WIDTH) <<
           "Max Fan RPM," << fan_props.maxRPM << std::endl;
 
@@ -1048,7 +1067,8 @@ void PrintFanInfo(
 }
 
 void PrintTemperatureInfo(
-    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX) {
+    zes_device_handle_t device, uint32_t subdevice_id = UINT32_MAX,
+    uint32_t tile = UINT32_MAX) {
   ze_result_t status = ZE_RESULT_SUCCESS;
 
   uint32_t sensor_count = 0;
@@ -1069,7 +1089,9 @@ void PrintTemperatureInfo(
 
       if ((temp_props.onSubdevice &&
           temp_props.subdeviceId == subdevice_id) ||
-          (!temp_props.onSubdevice && temp_props.subdeviceId == UINT32_MAX)) {
+          (!temp_props.onSubdevice && temp_props.subdeviceId == UINT32_MAX) ||
+          (subdevice_id == UINT32_MAX && tile != UINT32_MAX &&
+           temp_props.onSubdevice && temp_props.subdeviceId == tile)) {
         if (temp_props.type == ZES_TEMP_SENSORS_GPU) {
           double temp = 0.0f;
           status = zesTemperatureGetState(sensor_list[i], &temp);
@@ -1099,13 +1121,14 @@ void PrintTemperatureInfo(
 }
 
 static void PrintSubdeviceDetails(
-    ze_driver_handle_t driver, zes_device_handle_t device,
-    uint32_t subdevice_id) {
+    ze_driver_handle_t driver, ze_device_handle_t core_device,
+    zes_device_handle_t device, uint32_t subdevice_id) {
   SYSMON_ASSERT(driver != nullptr);
+  SYSMON_ASSERT(core_device != nullptr);
   SYSMON_ASSERT(device != nullptr);
 
-  std::vector<zes_device_handle_t> subdevice_list =
-    sysmon::GetSubDeviceList(device);
+  std::vector<ze_device_handle_t> subdevice_list =
+    sysmon::GetSubDeviceList(core_device);
   SYSMON_ASSERT(subdevice_id < subdevice_list.size());
 
   ze_device_properties_t props{sysmon::GetDevicePropertiesType(driver), };
@@ -1139,7 +1162,7 @@ static void PrintSubdeviceDetails(
   PrintFrequencyInfo(device, subdevice_id);
   PrintPowerInfo(device, subdevice_id);
   PrintFirmwareInfo(device, subdevice_id);
-  PrintMemoryInfo(device, subdevice_id);
+  PrintMemoryInfo(core_device, device, subdevice_id);
   PrintEngineInfo(device, subdevice_id);
   PrintFabricPortInfo(device, subdevice_id);
   PrintFanInfo(device, subdevice_id);
@@ -1147,7 +1170,9 @@ static void PrintSubdeviceDetails(
 }
 
 static void PrintDetails(ze_driver_handle_t driver,
-    zes_device_handle_t device, uint32_t device_id) {
+    ze_device_handle_t core_device, zes_device_handle_t device,
+    uint32_t tile, uint32_t device_id) {
+  SYSMON_ASSERT(core_device != nullptr);
   SYSMON_ASSERT(device != nullptr);
   ze_result_t status = ZE_RESULT_SUCCESS;
 
@@ -1161,9 +1186,13 @@ static void PrintDetails(ze_driver_handle_t driver,
   std::cout << std::setw(DEL_WIDTH) << std::setfill('=') <<
     '=' << std::setfill(' ') << std::endl;
 
-  PrintDeviceInfo(driver, device);
-  PrintComputeInfo(device);
-  PrintModuleInfo(device);
+  // Sub-devices of the core device (see PrintShorInfo).
+  const uint32_t subdevice_count =
+    static_cast<uint32_t>(sysmon::GetSubDeviceList(core_device).size());
+
+  PrintDeviceInfo(driver, core_device);
+  PrintComputeInfo(core_device);
+  PrintModuleInfo(core_device);
 
   std::cout << std::setw(TEXT_WIDTH) << std::left <<
     "Brand Number," << props.boardNumber << std::endl;
@@ -1184,7 +1213,7 @@ static void PrintDetails(ze_driver_handle_t driver,
     "Vendor," << props.vendorName << std::endl;
 
   std::cout << std::setw(TEXT_WIDTH) << std::left <<
-    "Subdevices," << props.numSubdevices << std::endl;
+    "Subdevices," << subdevice_count << std::endl;
 
   zes_pci_properties_t pci_props{ZES_STRUCTURE_TYPE_PCI_PROPERTIES, };
   status = zesDevicePciGetProperties(device, &pci_props);
@@ -1216,20 +1245,20 @@ static void PrintDetails(ze_driver_handle_t driver,
     "Level Zero GPU Driver Version," <<
     GetDriverString(driver_props.driverVersion) << std::endl;
 
-  PrintFrequencyInfo(device);
-  PrintPowerInfo(device);
-  PrintFirmwareInfo(device);
-  PrintMemoryInfo(device);
-  PrintEngineInfo(device);
-  PrintFabricPortInfo(device);
-  PrintFanInfo(device);
-  PrintTemperatureInfo(device);
+  PrintFrequencyInfo(device, UINT32_MAX, tile);
+  PrintPowerInfo(device, UINT32_MAX, tile);
+  PrintFirmwareInfo(device, UINT32_MAX, tile);
+  PrintMemoryInfo(core_device, device, UINT32_MAX, tile);
+  PrintEngineInfo(device, UINT32_MAX, tile);
+  PrintFabricPortInfo(device, UINT32_MAX, tile);
+  PrintFanInfo(device, UINT32_MAX, tile);
+  PrintTemperatureInfo(device, UINT32_MAX, tile);
 
-  if (props.numSubdevices > 0) {
-    for (size_t subdevice = 0; subdevice < props.numSubdevices; ++subdevice) {
+  if (subdevice_count > 0) {
+    for (uint32_t subdevice = 0; subdevice < subdevice_count; ++subdevice) {
       std::cout << std::setw(DEL_WIDTH) << std::setfill('-') <<
         '-' << std::setfill(' ') << std::endl;
-      PrintSubdeviceDetails(driver, device, subdevice);
+      PrintSubdeviceDetails(driver, core_device, device, subdevice);
     }
   }
 
@@ -1262,7 +1291,16 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  sysmon::SetEnv("ZES_ENABLE_SYSMAN", "1");
+  // Sysman is initialized with zesInit, before and independently of the core
+  // API, and its device handles come from zesDeviceGet. If zesInit fails
+  // (e.g. an old loader or driver), fall back to the legacy mode: with
+  // ZES_ENABLE_SYSMAN=1 set before the core API is initialized, the core
+  // device handles are also Sysman handles. The specification advises against
+  // combining zesInit with ZES_ENABLE_SYSMAN.
+  const bool legacy_sysman = (zesInit(0) != ZE_RESULT_SUCCESS);
+  if (legacy_sysman) {
+    sysmon::SetEnv("ZES_ENABLE_SYSMAN", "1");
+  }
 
   ze_init_driver_type_desc_t driver_type_desc {
     ZE_STRUCTURE_TYPE_INIT_DRIVER_TYPE_DESC,
@@ -1290,15 +1328,6 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  status = zesInit(0);
-
-  if (status != ZE_RESULT_SUCCESS) {
-    status = zeInit(ZE_INIT_FLAG_GPU_ONLY);
-    if (status == ZE_RESULT_SUCCESS && driver_list.empty()) {
-      driver_list = sysmon::GetDriverList();
-    }
-  }
-
   SYSMON_ASSERT(mode == MODE_DEVICE_LIST || mode == MODE_DETAILS ||
              mode == MODE_PROCESSES);
   switch(mode) {
@@ -1308,17 +1337,22 @@ int main(int argc, char* argv[]) {
     }
     case MODE_DETAILS:
     case MODE_PROCESSES: {
+      std::vector<sysmon::Device> device_list =
+        sysmon::GetDevices(driver_list, legacy_sysman);
+      if (device_list.empty()) {
+        std::cerr << "No Level Zero Sysman device found" << std::endl;
+        return EXIT_FAILURE;
+      }
       uint32_t device_id = 0;
-      for (auto driver : driver_list) {
-        for (auto device : sysmon::GetDeviceList(driver)) {
-          if(mode == MODE_PROCESSES) {
-            PrintShorInfo(driver, device, device_id);
-            PrintProcesses(device);
-          } else {
-            PrintDetails(driver, device, device_id);
-          }
-          ++device_id;
+      for (const auto& device : device_list) {
+        if (mode == MODE_PROCESSES) {
+          PrintShorInfo(device.driver, device.core, device.sysman, device_id);
+          PrintProcesses(device.sysman);
+        } else {
+          PrintDetails(device.driver, device.core, device.sysman, device.tile,
+                       device_id);
         }
+        ++device_id;
       }
       break;
     }
