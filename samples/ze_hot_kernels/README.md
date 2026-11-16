@@ -6,20 +6,24 @@ As a result, table like the following will be printed:
 ```
 === Device Timing Results: ===
 
-Total Execution Time (ns): 368598201
-Total Device Time (ns): 172440915
+Total Execution Time (ns): 34698389
+Total Device Time (ns): 13342080
 
     Kernel,       Calls, SIMD,           Time (ns),  Time (%),        Average (ns),            Min (ns),            Max (ns)
-      GEMM,           4,   32,           172440915,    100.00,            43110228,            42880167,            43415416
+      GEMM,           4,   32,            13342080,    100.00,             3335520,             3332960,             3338400
 ```
 ## Supported OS
 - Linux
 - Windows (*under development*)
 
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
+
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
+- [Python](https://www.python.org/) (version 3.9 and above)
 - [oneAPI Level Zero loader](https://github.com/oneapi-src/level-zero)
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime)
 

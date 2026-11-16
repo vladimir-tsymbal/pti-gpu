@@ -13,10 +13,10 @@ General approach for all the options is to find (or instrument with [Tracing API
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - [ze_api.h](https://github.com/oneapi-src/level-zero/blob/master/include/ze_api.h)
@@ -60,12 +60,15 @@ zeEventQueryKernelTimestamp(event, &timestamp);
 ```
 Finally to compute actual activity duration in nanoseconds one should retrieve timer resolution for the device and perform time scaling:
 ```cpp
-ze_device_properties_t props{};
-props.version = ZE_DEVICE_PROPERTIES_VERSION_CURRENT;
-status = zeDeviceGetProperties(state->device, &props);
+// With ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2, timerResolution is in cycles
+// per second (with ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES, in nanoseconds per cycle)
+ze_device_properties_t props{ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2, };
+ze_result_t status = zeDeviceGetProperties(device, &props);
 assert(status == ZE_RESULT_SUCCESS);
 
-uint64_t time_ns = (timestamp.context.kernelEnd - timestamp.context.kernelStart) * props.timerResolution;
+const uint64_t NSEC_IN_SEC = 1000000000;
+uint64_t time_ns = (timestamp.context.kernelEnd - timestamp.context.kernelStart) *
+  NSEC_IN_SEC / props.timerResolution;
 ```
 There are two types of timestamps one may retrieve:
 * `global` - wall-clock time start/end in GPU clocks for event, should be used to map kernel to global application timeline;
@@ -83,7 +86,7 @@ assert(status == ZE_RESULT_SUCCESS);
 ```
 Host timestamp value corresponds to `CLOCK_MONOTONIC_RAW` on Linux or `QueryPerformanceCounter` on Windows, while device timestamp for GPU is collected in raw GPU cycles.
 
-Note that the number of valid bits for the device timestamp returned by `zeDeviceGetGlobalTimestamps` is `timestampValidBits`, while the global kernel timastamp returned by `zeEventQueryKernelTimestamp` has `kernelTimestampValidBits` (both values are fields of `ze_device_properties_t`). And currently `kernelTimestampValidBits` is less then `timestampValidBits`, so to map kernels into CPU timeline one may need to truncate device timestamp to `kernelTimestampValidBits`:
+Note that the number of valid bits for the device timestamp returned by `zeDeviceGetGlobalTimestamps` is `timestampValidBits`, while the global kernel timestamp returned by `zeEventQueryKernelTimestamp` has `kernelTimestampValidBits` (both values are fields of `ze_device_properties_t`). On some devices `kernelTimestampValidBits` is less than `timestampValidBits` (e.g. 32 bits on Intel(R) Data Center GPU Max 1550; Intel(R) Arc(TM) B570 Graphics reports 64), so to map kernels into CPU timeline one may need to truncate device timestamp to `kernelTimestampValidBits`:
 ```cpp
 ze_device_properties_t props{ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2, };
 ze_result_t status = zeDeviceGetProperties(device, &props);
@@ -109,7 +112,7 @@ Event pool profiling does not require any additional environment variables to be
 ```
 
 ## Usage Details
-- refer to oneAPI Level Zero [documentation](https://spec.oneapi.io/level-zero/latest/index.html) to learn more
+- refer to oneAPI Level Zero [documentation](https://oneapi-src.github.io/level-zero-spec/level-zero/latest/index.html) to learn more
 
 ## Samples
 - [Level Zero GEMM](../../samples/ze_gemm)

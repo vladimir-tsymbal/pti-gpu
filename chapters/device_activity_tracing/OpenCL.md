@@ -17,7 +17,7 @@ Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes use `Que
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Any
@@ -37,19 +37,19 @@ cl_queue_properties props[3] = { CL_QUEUE_PROPERTIES,
 cl_int status = CL_SUCCESS;
 cl_command_queue queue =
   clCreateCommandQueueWithProperties(context, device, props, &status);
-assert(status == CL_SUCESS);
+assert(status == CL_SUCCESS);
 ```
 2. Introduce the event for the target device activity, e.g. for the kernel:
 ```cpp
 cl_event event = nullptr;
 status = clEnqueueNDRangeKernel(queue, kernel, dim, nullptr,
     global_size, local_size, 0, nullptr, &event);
-assert(status == CL_SUCESS);
+assert(status == CL_SUCCESS);
 ```
 3. Set the callback to be notified when the activity is completed:
 ```cpp
 status = clSetEventCallback(event, CL_COMPLETE, EventNotify, nullptr);
-assert(status == CL_SUCESS);
+assert(status == CL_SUCCESS);
 ```
 4. Read the profiling data inside the callback:
 ```cpp
@@ -74,13 +74,13 @@ It's commonly needed to map OpenCL kernel timestamps to general CPU timeline. To
 ```cpp
 cl_ulong device_timestamp = 0, host_timestamp = 0;
 cl_int status = clGetDeviceAndHostTimer(
-    device, device_timestamp, host_timestamp);
-assert(status == CL_SUCCESS)
+    device, &device_timestamp, &host_timestamp);
+assert(status == CL_SUCCESS);
 ```
 Note, that host timestamp in Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver is based on `CLOCK_MONOTONIC_RAW` on Linux and `QueryPerformanceCounter` on Windows (implementation specific, may be changed in future). Both timers are in nanoseconds.
 
 ## Usage Details
-- refer to the documentation for the function [clGetEventProfilingInfo](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetEventProfilingInfo.html) to learn more on OpenCL(TM) profiling
+- refer to the documentation for the function [clGetEventProfilingInfo](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetEventProfilingInfo.html) to learn more on OpenCL(TM) profiling
 
 ## Samples
 - [OpenCL(TM) GEMM](../../samples/cl_gemm)

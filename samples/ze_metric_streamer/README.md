@@ -9,11 +9,11 @@ As a result, table like the following will be printed. For each kernel its call 
 ```
 === Device Metrics: ===
 
-Total Execution Time (ns): 516360532
-Total Kernel Time (ns): 174056667
+Total Execution Time (ns): 63020629
+Total Kernel Time (ns): 23130936
 
     Kernel,       Calls,           Time (ns),        Time (%),        Average (ns),   EU Active (%),    EU Stall (%),     EU Idle (%)
-      GEMM,           4,           174056667,          100.00,            43514166,           73.24,           26.67,            0.09
+      GEMM,           4,            23130936,          100.00,             5782734,           83.03,           16.07,            0.91
 ```
 To set target device and sub-device to collect metrics from one can specify `PTI_DEVICE_ID` and `PTI_SUB_DEVICE_ID` environment variables.
 
@@ -21,10 +21,15 @@ To set target device and sub-device to collect metrics from one can specify `PTI
 - Linux
 - Windows (*under development*)
 
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
+- Metrics (OA) collection: tested with both kernel drivers
+
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
+- [Python](https://www.python.org/) (version 3.9 and above)
 - [oneAPI Level Zero loader](https://github.com/oneapi-src/level-zero)
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime)
 - [Intel(R) Metrics Discovery Application Programming Interface](https://github.com/intel/metrics-discovery)

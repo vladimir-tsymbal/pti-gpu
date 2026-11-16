@@ -6,9 +6,9 @@ This fork is a maintained continuation of the PTI-GPU tools and samples that
 upstream marked as no longer under active development. The PTI SDK and
 `unitrace` are not part of this fork.
 
-- Targets Linux with both the i915 and xe kernel drivers. Testing is
-  currently done on i915; xe validation is in progress. The Windows build
-  paths are kept, but Windows is not tested here.
+- Targets Linux with both the i915 and xe kernel drivers, and is tested on
+  both (see [Tested Configurations](#tested-configurations)). The Windows
+  build paths are kept, but Windows is not tested here.
 - Tools: [onetrace](tools/onetrace/README.md), [oneprof](tools/oneprof/README.md),
   [ze_tracer](tools/ze_tracer/README.md), [cl_tracer](tools/cl_tracer/README.md),
   [gpuinfo](tools/gpuinfo/README.md), [instcount](tools/instcount/README.md),
@@ -30,22 +30,37 @@ You may obtain a copy of the License at <https://opensource.org/license/MIT>
 
 ## Supported OS
 
-- Linux (i915 and xe kernel drivers): developed and tested (xe validation in progress)
+- Linux (i915 and xe kernel drivers): developed and tested
 - Windows: build paths kept, not tested in this fork
 
 ## Supported Platforms
 
-- Intel® Processor Graphics Gen9 (formerly Skylake) and newer
-- Intel® Iris® Xe Graphics
-- Intel® Data Center GPU Flex Series
-- Intel® Data Center GPU Max Series
-- Intel® Arc™ Graphics
+- Intel® Data Center GPU Max Series and Intel® Arc™ B-Series Graphics are
+  tested in this fork (see below).
+- Upstream also listed Intel® Processor Graphics Gen9 (formerly Skylake)
+  and newer, Intel® Iris® Xe Graphics, Intel® Data Center GPU Flex Series
+  and other Intel® Arc™ Graphics. These are not tested in this fork.
 
 *Some samples may have higher hardware requirements.*
 
 ## Tested Configurations
 
-- Ubuntu 24.04 with Intel® Data Center GPU Max Series (i915)
+| | i915 | xe |
+|---|---|---|
+| GPU | Intel® Data Center GPU Max 1550 | Intel® Arc™ B570 Graphics |
+| OS, kernel | Ubuntu 24.04, 6.8 | Ubuntu 26.04, 7.0 |
+| Kernel driver | i915 out-of-tree DKMS 1.25.2 | xe (in-tree) |
+| Compute runtime | 25.18 | 26.05 |
+| Level Zero loader (headers) | 1.24 (1.13) | 1.28 (1.15) |
+| oneAPI | 2026.2 | 2026.2 |
+| Metrics Discovery API, Metrics Library | 1.14.180, 1.0.196 | 1.16.199, 1.0.249 (built from source) |
+| GT Pin | 5.0.0 | 5.0.0 |
+
+Every test of `tests/run.py` passes on both, except the ones skipped by
+design (see [Testing](#testing)). The metrics (OA) tests were run with
+`perf_stream_paranoid=0` (i915, on a host with i915 DKMS 1.25.2.13, kernel
+6.8.0-60 and oneAPI 2025.3) and `observation_paranoid=0` (xe). Exact package
+versions and install steps: [SOFTWARE](SOFTWARE).
 
 ## Profiling Chapters
 
@@ -139,14 +154,14 @@ You may obtain a copy of the License at <https://opensource.org/license/MIT>
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
 - [Python](https://www.python.org/) (version 3.9 and above)
-- On Linux one has to be a part of the `video` (Ubuntu 18 and below) or
-  `render` (Ubuntu 19 and above) user group to do any computations on
-  Intel(R) Processor Graphics:
+- On Linux one has to be a part of the `render` user group (the group of
+  `/dev/dri/renderD*`) to do any computations on Intel(R) Processor Graphics.
+  [gpu_perfmon_set](samples/gpu_perfmon_set/README.md) may also open
+  `/dev/dri/card*`, which belongs to the `video` group:
 
   ```sh
-  sudo usermod -a -G video <username>
-  # OR
   sudo usermod -a -G render <username>
+  sudo usermod -a -G video <username>  # for /dev/dri/card*
   ```
 
 - OpenCL(TM) [ICD Loader](https://github.com/KhronosGroup/OpenCL-ICD-Loader)
@@ -177,9 +192,9 @@ You may obtain a copy of the License at <https://opensource.org/license/MIT>
       ```
 
 - [Metrics Library for Metrics Discovery API (Metrics Library for MD API)](https://github.com/intel/metrics-library)
-- [Graphics Technology Pin (GT Pin)](https://software.intel.com/content/www/us/en/develop/articles/gtpin.html)
-- [Intel(R) oneAPI Base Toolkit](https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit.html)
-- [libdrm](https://gitlab.freedesktop.org/mesa/drm)
+- [Graphics Technology Pin (GT Pin)](https://www.intel.com/content/www/us/en/developer/articles/tool/gtpin.html)
+- [Intel(R) oneAPI Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/oneapi-toolkit.html) (Intel(R) oneAPI DPC++/C++ Compiler `icpx`, for the DPC++ and OpenMP samples)
+- [libdrm](https://dri.freedesktop.org/libdrm/)
   - on Ubuntu one may perform:
 
     ```sh
@@ -255,35 +270,46 @@ provided on particular sample description page.
 
 ## Testing
 
-There is a way to build and test all the samples in one command, e.g.:
+`tests/run.py` builds and runs the tests of every sample and tool. The
+DPC++ and OpenMP tests need the oneAPI environment, and the metrics tests
+need the Metrics Discovery API library (`LD_LIBRARY_PATH` if it is in
+`/usr/local/lib`):
 
 ```sh
-LD_LIBRARY_PATH=/usr/local/lib python <pti_root>/tests/run.py
+source /opt/intel/oneapi/setvars.sh
+LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH python3 <pti_root>/tests/run.py
 ```
 
-In case of failed tests, error output will be available in `stderr.log` file.
+Options:
 
-It's also possible to test an exact sample or a group of samples, e.g.:
+| Option | Description |
+|---|---|
+| `-s <regex>` | Run only the samples and tools whose name matches, e.g. `-s cl_hot_functions` or `-s ze` |
+| `-d` | Build in Debug mode instead of Release |
+| `--skip-oa` | Skip every test that opens GPU metric (OA) streams (same as `PTI_TEST_SKIP_OA=1`) |
+| `--log-dir <dir>` | Write `stderr.log`, `results.json` and `junit.xml` to `<dir>` (default: the current directory; also `PTI_TEST_LOG_DIR`) |
+| `--timeout <seconds>` | Time limit per test (default 600, `0` = no limit) |
+| `-c` | Remove the `build` directories the tests created, and the log and report files |
 
-```sh
-# build and test an exact sample "cl_hot_functions"
-python <pti_root>/tests/run.py -s cl_hot_functions
-# build and test all L0 samples
-python <pti_root>/tests/run.py -s ze
-```
+Each test is reported as PASSED, FAILED or SKIPPED, followed by a summary
+with the reason for every failed or skipped test. The error output of the
+failed tests is in `stderr.log`. `results.json` lists every test with its
+status, time and reason, and `junit.xml` holds the same results in JUnit
+format for CI. A test is SKIPPED when something it needs is missing on the
+host, e.g.:
 
-To run testing in debug mode one may use `-d` option, e.g.:
+- metric (OA) streams are not allowed: `--skip-oa`, or
+  `perf_stream_paranoid` / `observation_paranoid` is not `0` for non-root
+  users (see [Prerequisites](#prerequisites));
+- the Metrics Discovery API library (`libigdmd.so`) is not found;
+- `icpx` is not found (DPC++ and OpenMP tests);
+- GT Pin is not available (download failed, or `GTPIN_PATH` is wrong);
+- the OpenCL runtime doesn't provide the Intel tracing extension
+  (`clCreateTracingHandleINTEL`).
 
-```sh
-python <pti_root>/tests/run.py -s ze_gemm -d
-```
-
-The script creates `build` directory inside each sample folder while testing.
-To remove all of these folders, use:
-
-```sh
-python <pti_root>/tests/run.py -c
-```
+On the [tested configurations](#tested-configurations) a run with
+`--skip-oa` reports 91 passed, 0 failed and 18 skipped (the metrics tests),
+and the metrics tests pass when OA access is allowed.
 
 **Tested software versions one may find in [SOFTWARE](SOFTWARE) file.**
 

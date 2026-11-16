@@ -28,28 +28,44 @@ Options:
 **Call Logging** mode allows to grab full host API trace, e.g.:
 ```
 ...
->>>> [99194698] zeMemAllocDevice: hContext = 0x55c087b2ca80 device_desc = 0x7ffcd388ecc0 size = 4194304 alignment = 64 hDevice = 0x55c0878f3bd0 pptr = 0x7ffcd388ec08 (ptr = 0)
-<<<< [99259883] zeMemAllocDevice [65185 ns] ptr = 0xffffffffff3f0000 -> ZE_RESULT_SUCCESS (0)
->>>> [99307794] zeKernelSetGroupSize: hKernel = 0x55c087b5a4d0 groupSizeX = 256 groupSizeY = 1 groupSizeZ = 1
-<<<< [99335067] zeKernelSetGroupSize [27273 ns] -> ZE_RESULT_SUCCESS (0)
->>>> [99389764] zeKernelSetArgumentValue: hKernel = 0x55c087b5a4d0 argIndex = 0 argSize = 8 pArgValue = 0x7ffcd388ebf8
-<<<< [99435142] zeKernelSetArgumentValue [45378 ns] -> ZE_RESULT_SUCCESS (0)
+>>>> [223698] zeDeviceGetProperties: hDevice = 0x5f4429b17b18 pDeviceProperties = 0x7ffc5ced81f0
+<<<< [228341] zeDeviceGetProperties [2519 ns] -> ZE_RESULT_SUCCESS(0x0)
+>>>> [241841] zeDeviceGetProperties: hDevice = 0x5f4429b1fe98 pDeviceProperties = 0x7ffc5ced81f0
+<<<< [243373] zeDeviceGetProperties [595 ns] -> ZE_RESULT_SUCCESS(0x0)
+>>>> [249798] zeDeviceGetSubDevices: hDevice = 0x5f4429b17b18 pCount = 0x7ffc5ced8170 (Count = 0) phSubdevices = 0
+<<<< [251385] zeDeviceGetSubDevices [118 ns] Count = 0 -> ZE_RESULT_SUCCESS(0x0)
+>>>> [254355] zeDriverGet: pCount = 0x7ffc5ced81b0 (Count = 0) phDrivers = 0
+<<<< [255422] zeDriverGet [77 ns] Count = 1 -> ZE_RESULT_SUCCESS(0x0)
 ...
 ```
-**Chrome Call Logging** mode dumps API calls to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool) browser tool.
+**Chrome Call Logging** mode dumps API calls to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/) browser tool.
 
 **Host Timing** mode collects duration for each API call and provides the summary for the whole application:
 ```
 === API Timing Results: ===
 
-Total Execution Time (ns):    418056422
-      Total API Time (ns):    407283268
+Total Execution Time (ns):             33473481
+      Total API Time (ns):             20286046
 
-                         Function,       Calls,     Time (ns),  Time (%),     Average (ns),      Min (ns),      Max (ns)
-        zeCommandQueueSynchronize,           4,     182529847,     44.82,         45632461,      45271728,      46364532
-                   zeModuleCreate,           1,     111687828,     27.42,        111687828,     111687828,     111687828
-zeCommandQueueExecuteCommandLists,           4,     108593458,     26.66,         27148364,       1756304,     102803947
-    zeCommandListAppendMemoryCopy,          12,       2493748,      0.61,           207812,         62061,       1037087
+                         Function,       Calls,           Time (ns),  Time (%),        Average (ns),            Min (ns),            Max (ns)
+        zeCommandQueueSynchronize,           4,            17017085,     83.89,             4254271,             3984793,             4434833
+    zeCommandListAppendMemoryCopy,          12,             1735239,      8.55,              144603,               73218,              513841
+zeCommandQueueExecuteCommandLists,           4,              396728,      1.96,               99182,               24373,              204972
+             zeCommandQueueCreate,           4,              246881,      1.22,               61720,                1619,              239243
+                   zeModuleCreate,           1,              202525,      1.00,              202525,              202525,              202525
+                 zeMemAllocDevice,          12,              177774,      0.88,               14814,                3672,               65577
+             zeCommandListDestroy,           4,              113722,      0.56,               28430,               20947,               39396
+                        zeMemFree,          12,               82011,      0.40,                6834,                4909,               14333
+                zeEventPoolCreate,           4,               78271,      0.39,               19567,               14165,               23162
+               zeEventPoolDestroy,           4,               59064,      0.29,               14766,               11934,               18064
+              zeCommandListCreate,           4,               50622,      0.25,               12655,                3146,               35981
+                    zeEventCreate,           4,               30152,      0.15,                7538,                6145,                8842
+      zeEventQueryKernelTimestamp,           4,               18146,      0.09,                4536,                3314,                6623
+  zeCommandListAppendLaunchKernel,           4,               10803,      0.05,                2700,                1744,                4254
+                  zeContextCreate,           1,               10785,      0.05,               10785,               10785,               10785
+         zeKernelSetArgumentValue,          16,                8831,      0.04,                 551,                 142,                2576
+                    zeInitDrivers,           1,                6789,      0.03,                6789,                6789,                6789
+            zeDeviceGetProperties,           9,                6600,      0.03,                 733,                 151,                1647
 ...
 ```
 **Device Timing** mode collects duration for each kernel on the device and provides the summary for the whole application.
@@ -62,54 +78,58 @@ Memory transfers are supplemented by transfer direction:
 ```
 === Device Timing Results: ===
 
-Total Execution Time (ns):            295236137
-   Total Device Time (ns):            177147822
+Total Execution Time (ns):             34283511
+   Total Device Time (ns):             34357280
 
-                            Kernel,       Calls,     Time (ns),  Time (%),     Average (ns),      Min (ns),      Max (ns)
-                              GEMM,           4,     172104499,     97.15,         43026124,      42814000,      43484166
-zeCommandListAppendMemoryCopy(M2D),           8,       2934831,      1.66,           366853,        286500,        585333
-zeCommandListAppendMemoryCopy(D2M),           4,       2099164,      1.18,           524791,        497666,        559666
-        zeCommandListAppendBarrier,           8,          9328,      0.01,             1166,          1166,          1166
+                            Kernel,       Calls,           Time (ns),    Time (%),        Average (ns),            Min (ns),            Max (ns)
+        zeCommandListAppendBarrier,           8,            15593920,       45.39,             1949240,              418240,             3337280
+                              GEMM,           4,            13338720,       38.82,             3334680,             3333760,             3335680
+zeCommandListAppendMemoryCopy(M2D),           8,             4477600,       13.03,              559700,              415360,              712480
+zeCommandListAppendMemoryCopy(D2M),           4,              947040,        2.76,              236760,              203680,              331200
 ```
 **Kernel Submission** mode collects append, submit and execute intervals for kernels and memory transfers:
 ```
 === Kernel Submission Results: ===
 
-Total Execution Time (ns):            256576162
-   Total Device Time (ns):            174582990
+Total Execution Time (ns):             34754016
+   Total Device Time (ns):             35434720
 
                             Kernel,       Calls,         Append (ns),  Append (%),         Submit (ns),  Submit (%),        Execute (ns), Execute (%),
-                              GEMM,           4,              553087,       10.79,            12441082,        3.03,           169770832,       97.24,
-zeCommandListAppendMemoryCopy(M2D),           8,             2898413,       56.53,            20843165,        5.08,             2843832,        1.63,
-zeCommandListAppendMemoryCopy(D2M),           4,              534710,       10.43,           182217916,       44.43,             1957331,        1.12,
-        zeCommandListAppendBarrier,           8,             1140561,       22.25,           194646664,       47.46,               10995,        0.01,
+        zeCommandListAppendBarrier,           8,             1760281,       22.30,             3182880,       13.91,            15912160,       44.91,
+                              GEMM,           4,              806259,       10.21,             2873120,       12.55,            13340320,       37.65,
+zeCommandListAppendMemoryCopy(M2D),           8,             4556910,       57.72,              608800,        2.66,             5110080,       14.42,
+zeCommandListAppendMemoryCopy(D2M),           4,              771164,        9.77,            16223200,       70.88,             1072160,        3.03,
 ```
 **Verbose** mode provides additional information per kernel (SIMD width, group count and group size) and per transfer (bytes transferred). This option should be used in addition to others, e.g. for **Device Timing** mode one can get:
 ```
 === Device Timing Results: ===
 
-Total Execution Time (ns):            289685451
-   Total Device Time (ns):            176178824
+Total Execution Time (ns):             34272257
+   Total Device Time (ns):             34995040
 
-                                           Kernel,    Calls,    Time (ns),  Time (%),     Average (ns),      Min (ns),      Max (ns)
-            GEMM[SIMD32 {4; 1024; 1} {256; 1; 1}],        4,    171667499,     97.44,         42916874,      42650833,      43501500
-zeCommandListAppendMemoryCopy(M2D)[4194304 bytes],        8,      2535164,      1.44,           316895,        276166,        363666
-zeCommandListAppendMemoryCopy(D2M)[4194304 bytes],        4,      1966499,      1.12,           491624,        464500,        516833
-                       zeCommandListAppendBarrier,        8,         9662,      0.01,             1207,          1166,          1333
+                                           Kernel,       Calls,           Time (ns),    Time (%),        Average (ns),            Min (ns),            Max (ns)
+                       zeCommandListAppendBarrier,           8,            15803200,       45.16,             1975400,              524800,             3338400
+           GEMM[SIMD32 {1; 1024; 1} {1024; 1; 1}],           4,            13342080,       38.13,             3335520,             3334560,             3336800
+zeCommandListAppendMemoryCopy(M2D)[4194304 bytes],           8,             4887520,       13.97,              610940,              521760,              871680
+zeCommandListAppendMemoryCopy(D2M)[4194304 bytes],           4,              962240,        2.75,              240560,              232640,              248800
 ```
 
 **Device Timeline** mode (***Linux kernel 5.0+ is required for accurate measurements***) dumps four timestamps for each device activity - *append* to the command list, *submit* to device queue, *start* and *end* on the device (all the timestamps are in CPU nanoseconds):
 ```
-Device Timeline: start time [ns] = 2736828495339248
-Device Timeline (queue: 0x556fa2318fc0): zeCommandListAppendMemoryCopy [ns] = 396835703 (append) 398002195 (submit) 399757026 (start) 400230526 (end)
-Device Timeline (queue: 0x556fa2318fc0): zeCommandListAppendMemoryCopy [ns] = 397039340 (append) 398002195 (submit) 400231776 (start) 400547193 (end)
-Device Timeline (queue: 0x556fa2318fc0): GEMM [ns] = 397513563 (append) 398002195 (submit) 400548943 (start) 443632026 (end)
-Device Timeline (queue: 0x556fa2318fc0): zeCommandListAppendMemoryCopy [ns] = 397632053 (append) 398002195 (submit) 443633526 (start) 444084943 (end)
+Device Timeline: start time (CLOCK_MONOTONIC_RAW) [ns] = 63826416939706
+Device Timeline: start time (CLOCK_MONOTONIC) [ns] = 63833923415213
+Device Timeline: start time (CLOCK_REALTIME) [ns] = 1794831352607538592
+Device Timeline (queue: 0x5d8082b7bad8): zeCommandListAppendMemoryCopy(M2D)<1.1> [ns] = 6573671 (append) 8957076 (submit) 9165396 (start) 10048596 (end)
+Device Timeline (queue: 0x5d8082b7bad8): zeCommandListAppendMemoryCopy(M2D)<2.1> [ns] = 8257188 (append) 8957076 (submit) 9166036 (start) 10048916 (end)
+Device Timeline (queue: 0x5d8082b7bad8): zeCommandListAppendBarrier<3.1> [ns] = 8448815 (append) 8957076 (submit) 9166516 (start) 10052116 (end)
+Device Timeline (queue: 0x5d8082b7bad8): GEMM<4.1> [ns] = 8496499 (append) 8957076 (submit) 10052276 (start) 13385396 (end)
+Device Timeline (queue: 0x5d8082b7bad8): zeCommandListAppendBarrier<5.1> [ns] = 8501125 (append) 8957076 (submit) 10052916 (start) 13387636 (end)
+Device Timeline (queue: 0x5d8082b7bad8): zeCommandListAppendMemoryCopy(D2M)<6.1> [ns] = 8507201 (append) 8957076 (submit) 13387796 (start) 13725396 (end)
 ...
 ```
-**Chrome Device Timeline** mode dumps timestamps for device activities per command queue to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool) browser tool. Can't be used with **Chrome Kernel Timeline** and **Chrome Device Stages**.
+**Chrome Device Timeline** mode dumps timestamps for device activities per command queue to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/) browser tool. Can't be used with **Chrome Kernel Timeline** and **Chrome Device Stages**.
 
-**Chrome Kernel Timeline** mode dumps timestamps for device activities per kernel name to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool) browser tool. Can't be used with **Chrome Device Timeline**.
+**Chrome Kernel Timeline** mode dumps timestamps for device activities per kernel name to JSON format that can be opened in [chrome://tracing](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/) browser tool. Can't be used with **Chrome Device Timeline**.
 
 **Chrome Device Stages** mode provides alternative view for device queue where each kernel invocation is divided into stages: "appended", "sumbitted" and "execution". Can't be used with **Chrome Device Timeline**.
 
@@ -129,10 +149,14 @@ All the API calls and kernels, which submission happens while collection disable
 - Linux
 - Windows (*under development*)
 
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
+
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
+- [Python](https://www.python.org/) (version 3.9 and above)
 - [oneAPI Level Zero loader](https://github.com/oneapi-src/level-zero)
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime)
 

@@ -5,50 +5,58 @@ This sample application provides information on all platforms and devices availa
 The following modes are implemented:
 * Detailed information on each platform and device (`-a`):
     ```
-        Number of  platforms                            5
-        Platform Name                                   Intel(R) OpenCL
-        Platform Vendor                                 Intel(R) Corporation
-        Platform Profile                                FULL_PROFILE
-        Platform Extensions                             cl_khr_icd cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics ...
-    ...
-        Platform Name                                   Intel(R) OpenCL HD Graphics
-        Platform Vendor                                 Intel(R) Corporation
-        Platform Profile                                FULL_PROFILE
-        Platform Extensions                             cl_khr_byte_addressable_store cl_khr_fp16 cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_icd cl_khr_local_int32_base_atomics ...
-    ...
-
-        Platform Name                                   Intel(R) OpenCL
-    Number of devices                                   1
-        Device Name                                     Intel(R) Core(TM) i7-6700K CPU @ 4.00GHz
-        Device Vendor                                   Intel(R) Corporation
-        Device vendor ID                                0x8086
-        Device Version                                  OpenCL 2.1 (Build 0)
+      Number of  platforms                            3
+      Platform Name                                   Intel(R) OpenCL
+      Platform Vendor                                 Intel(R) Corporation
+      Platform Profile                                FULL_PROFILE
+      Platform Name                                   Intel(R) OpenCL Graphics
+      Platform Vendor                                 Intel(R) Corporation
+      Platform Profile                                FULL_PROFILE
+      Platform Name                                   Intel(R) oneAPI Unified Runtime over Level-Zero
+      Platform Vendor                                 Intel(R) Corporation
+      Platform Profile                                FULL_PROFILE
+      Platform Name                                   Intel(R) OpenCL
+    Number of devices                                 1
+      Device Name                                     <CPU name>
+      Device Vendor                                   Intel(R) Corporation
+      Device vendor ID                                0x8086
+      Device Version                                  OpenCL 3.1 (Build 0)
+      Driver Version                                  2026.22.10.0.01_160000
+      Device SYCL Version                             OpenCL 3.1 (Build 0)
+      Device type                                     CPU
+      Device Available                                Yes
+      Compiler Available                              Yes
+      Linker Available                                Yes
+      Max compute units                               96
+      Max clock frequency                             2800MHz
     ...
     ```
 
 * List of available devices and platforms (`-l`):
     ```
     Platform #0: Intel(R) OpenCL
-    `-- Device #0: Intel(R) Core(TM) i7-6700K CPU @ 4.00GHz
-    Platform #1: Intel(R) FPGA Emulation Platform for OpenCL(TM)
-    `-- Device #0: Intel(R) FPGA Emulation Device
-    Platform #2: Intel(R) OpenCL HD Graphics
-    `-- Device #0: Intel(R) Gen9 HD Graphics NEO
-    Platform #3: Intel(R) Level-Zero
-    `-- Device #0: Intel(R) Gen9
-    Platform #4: SYCL host platform
-    `-- Device #0: SYCL host device
+     `-- Device #0: <CPU name>
+    Platform #1: Intel(R) OpenCL Graphics
+     `-- Device #0: <GPU name>
+     `-- Device #1: <GPU name>
+    Platform #2: Intel(R) oneAPI Unified Runtime over Level-Zero
+     `-- Device #0: <GPU name>
+     `-- Device #1: <GPU name>
     ```
 
 ## Supported OS
 - Linux
-- Windows
+- Windows (not validated)
+
+## Tested Configurations
+- Devices: lists every SYCL device; tested with Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver) and the OpenCL(TM) CPU device; other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
 
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
-- [Intel(R) oneAPI Base Toolkit](https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit.html)
+- [Python](https://www.python.org/) (version 3.9 and above)
+- [Intel(R) oneAPI Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/oneapi-toolkit.html) (Intel(R) oneAPI DPC++/C++ Compiler, `icpx`)
 
 ## Build and Run
 ### Linux

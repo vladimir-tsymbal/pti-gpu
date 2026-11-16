@@ -7,10 +7,10 @@ This chapter describes the interfaces and solutions one can use to deal with GPU
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Tested on Intel(R) Data Center GPU Max 1550 (Xe-HPC, i915 driver) and Intel(R) Arc(TM) B570 Graphics (Xe2, xe driver); other GPUs, including older generations, are not tested
 
 **Needed Headers**:
 - OpenCL(TM) [headers](https://github.com/KhronosGroup/OpenCL-Headers)
@@ -24,7 +24,7 @@ This chapter describes the interfaces and solutions one can use to deal with GPU
 
 ## How To Use
 ### Source Capture
-Source grabbing is the standard feature of OpenCL(TM) that can be employed through [`clGetProgramInfo`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) call. The line returned by this call contains the source code for the whole program, so in case one need some particular kernel, one should find it out manually, e.g. highlight only needed lines based on kernel symbols information:
+Source grabbing is the standard feature of OpenCL(TM) that can be employed through [`clGetProgramInfo`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) call. The line returned by this call contains the source code for the whole program, so in case one need some particular kernel, one should find it out manually, e.g. highlight only needed lines based on kernel symbols information:
 ```cpp
 size_t source_length = 0;
 status = clGetProgramInfo(program, CL_PROGRAM_SOURCE,
@@ -42,7 +42,7 @@ Kernel binary grabbing is the feature of OpenCL(TM) for Intel(R) Processor Graph
 
 There are two ways to retrieve kernel binaries supported by Intel(R) Processor Graphics.
 
-The first way is Intel(R) specific. Standard [`clGetKernelInfo`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetKernelInfo.html) function is used, but with a specific flag:
+The first way is Intel(R) specific. Standard [`clGetKernelInfo`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetKernelInfo.html) function is used, but with a specific flag:
 ```cpp
 #define CL_KERNEL_BINARY_PROGRAM_INTEL 0x407D
 
@@ -60,7 +60,7 @@ assert(status == CL_SUCCESS);
 ```
 In that case raw GEN binaries will be retrieved, so one may decode/disassemble them directly as described [here](#binary-decoding-and-disassembling).
 
-The second way is more standard and based on [`clGetProgramInfo`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) call:
+The second way is more standard and based on [`clGetProgramInfo`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) call:
 ```cpp
 size_t* binary_size = new size_t[device_count];
 status = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES,
@@ -81,7 +81,9 @@ assert(status == CL_SUCCESS);
 Here one will get binaries in ELF format that should be parsed as described in the [next section](#binary-parsing).
 
 ### Binary Parsing
-Program binary obtained by [`clGetProgramInfo`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) is stored as `"Intel(R) OpenCL Device Binary"` section of ELF file in a special internal format described in [patch_list.h](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/AdaptorOCL/ocl_igc_shared/executable_format/patch_list.h).
+**Current drivers:** with compute-runtime 25.18 (Intel(R) Data Center GPU Max 1550) and 26.05 (Intel(R) Arc(TM) B570 Graphics), the program binary returned by `clGetProgramInfo` (`CL_PROGRAM_BINARIES`) is a *zebin*: a standard ELF64 file (`e_machine` 205, Intel(R) GT) with the code of each kernel in its own `.text.<kernel name>` section, plus `.symtab` and the DWARF `.debug_*` sections (format: [zebin_elf.h](https://github.com/intel/compute-runtime/blob/master/shared/source/device_binary_format/zebin/zebin_elf.h)). The samples parse it with the [GPU ELF parser](../../utils/gpu_elf_parser) of this repository. The legacy format described below (`"Intel(R) OpenCL Device Binary"` section in the [patch_list.h](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/AdaptorOCL/ocl_igc_shared/executable_format/patch_list.h) layout) is not produced by these drivers and is not tested.
+
+Program binary obtained by [`clGetProgramInfo`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) is stored as `"Intel(R) OpenCL Device Binary"` section of ELF file in a special internal format described in [patch_list.h](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/AdaptorOCL/ocl_igc_shared/executable_format/patch_list.h).
 
 To retrieve raw GEN binary for a kernel with a specific name, one should perform the next two steps.
 
@@ -105,7 +107,7 @@ for (uint32_t i = 0; i < header->NumberOfKernels; ++i) {
   const char* kernel_name = reinterpret_cast<const char*>(ptr);
 
   ptr += kernel_header->KernelNameSize;
-  if (kernel_name == "SomeKernel") {
+  if (strcmp(kernel_name, "SomeKernel") == 0) {
     std::vector<uint8_t> raw_binary(kernel_header->KernelHeapSize);
     memcpy(raw_binary.data(), ptr,
            kernel_header->KernelHeapSize * sizeof(uint8_t));
@@ -123,10 +125,10 @@ To decode and/or disassemble GEN binaries one should use [Intel(R) Processor Gra
 
 ### Symbols Capture
 Symbols grabbing is also the specific feature of Intel(R) Processor Graphics, that provides various debug information for GPU programs and kernels. To get it, one can use standard
-[`clGetProgramInfo`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html)
+[`clGetProgramInfo`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html)
 function with specific flags.
 
-Symbols may be returned for each device associated with the OpenCL(TM) program object, so one should prepare the list of arrays by number of devices the program connected with. To get this number one may use [`clGetProgramInfo`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) call with `CL_PROGRAM_NUM_DEVICES` flag.
+Symbols may be returned for each device associated with the OpenCL(TM) program object, so one should prepare the list of arrays by number of devices the program connected with. To get this number one may use [`clGetProgramInfo`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetProgramInfo.html) call with `CL_PROGRAM_NUM_DEVICES` flag.
 
 Note, that symbols are available only if the OpenCL kernel is compiled with `-gline-tables-only` flag:
 ```cpp
@@ -153,6 +155,8 @@ assert(status == CL_SUCCESS);
 ```
 
 ### Symbols Parsing
+**Current drivers:** with compute-runtime 25.18 and 26.05 the symbols returned by `clGetProgramInfo` (`CL_PROGRAM_DEBUG_INFO_INTEL`) are a zebin ELF64 file as well, with the kernel code and the DWARF `.debug_info`, `.debug_line` and related sections. The [Debug Info](../../samples/cl_debug_info) sample reads the kernel code and the source line mapping from it with the [GPU ELF parser](../../utils/gpu_elf_parser). The IGC container format described [here](GenSymbolsDecoding.md) is not produced by these drivers and is not tested.
+
 To decode debug symbols for GPU modules one should refer to [Intel(R) Processor Graphics Compiler (IGC)](https://github.com/intel/intel-graphics-compiler) internal formats described [here](GenSymbolsDecoding.md).
 
 ## Usage Details

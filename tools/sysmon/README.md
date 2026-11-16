@@ -16,22 +16,31 @@ Options:
 **Processes** mode dumps short information about all the available GPUs and running processes (default mode):
 ```
 =====================================================================================
-GPU 0: Intel(R) Iris(R) Plus Graphics 655 [0x3ea5]    PCI Bus: 0000:00:02.0
-Vendor: Intel(R) Corporation    Driver Version: 1.1.20043    Subdevices: 0
-EU Count: 48    Threads Per EU: 7    EU SIMD Width: 8    Total Memory(MB): 25431.6
-Core Frequency(MHz): 300.0 of 1200.0    Core Temperature(C): 36
+GPU 0: <GPU name>    PCI Bus: 0000:9a:00.0
+Vendor: Intel(R) Corporation    Driver Version: 1.3.33578    Subdevices: 0
+EU Count: 448    Threads Per EU: 8    EU SIMD Width: 16    Total Memory(MB): 62244.0
+Core Frequency(MHz): 1600.0 of 1600.0    Core Temperature(C): unknown
 =====================================================================================
-Running Processes: 2
+Running Processes: 1
      PID,  Device Memory Used(MB),  Shared Memory Used(MB),  GPU Engines, Executable
-   22246,                  770.23,                     0.0,        OTHER, ./ze_gemm
-   22258,                     0.1,                     0.0,        OTHER, ./sysmon
+  237416,                     6.3,                     0.0,      UNKNOWN, ./sysmon
+=====================================================================================
+GPU 1: <GPU name>    PCI Bus: 0000:9a:00.0
+Vendor: Intel(R) Corporation    Driver Version: 1.3.33578    Subdevices: 0
+EU Count: 448    Threads Per EU: 8    EU SIMD Width: 16    Total Memory(MB): 62244.0
+Core Frequency(MHz): 1600.0 of 1600.0    Core Temperature(C): unknown
+=====================================================================================
+Running Processes: 1
+     PID,  Device Memory Used(MB),  Shared Memory Used(MB),  GPU Engines, Executable
+  237416,                     6.3,                     0.0,      UNKNOWN, ./sysmon
 ```
 *Note*, that the list of processes may be unavailable for integrated graphics. Core temperature is available only for *root* user.
 
 **Device List** mode prints the list of devices and subdevices on the system:
 ```
-Driver #0: API Version 1.1 (latest)
--- Device #0: Intel(R) Iris(R) Plus Graphics 655 [0x3ea5]
+Driver #0: API Version 1.6
+-- Device #0: <GPU name>
+-- Device #1: <GPU name>
 ```
 
 **Details** mode dumps all available information for all devices and subdevices:
@@ -39,40 +48,45 @@ Driver #0: API Version 1.1 (latest)
 =====================================================================================
 GPU 0
 =====================================================================================
-Name,                                   Intel(R) Iris(R) Plus Graphics 655 [0x3ea5]
-Number Of Slices,                       2
-Number Of Subslices Per Slice,          3
+Name,                                   <GPU name>
+Vendor ID,                              8086
+Device ID,                              bd6
+Core Clock Rate(MHz),                   1600
+Number Of Slices,                       1
+Number Of Subslices Per Slice,          56
 Number Of EU Per Subslice,              8
-Number Of Threads Per EU,               7
-Total EU Count,                         48
-Physical EU SIMD Width,                 8
+Number Of Threads Per EU,               8
+Total EU Count,                         448
+Physical EU SIMD Width,                 16
 Kernel Timestamp Valid Bits,            32
 Max Command Queue Priority,             0
-Timer Resolution(clks),                 12000000
+Timer Resolution(clks),                 12500000
 Timestamp Valid Bits,                   36
 Max Hardware Contexts,                  65536
-Max Memory Allocation Size(MB),         4096.0
-Brand Number,                           unknown
-Brand Name,                             Intel(R) Corporation
-Kernel Driver Version,                  C46E946D4B88EAAF868F519
-Serial Number,                          unknown
-Model Name,                             Intel(R) Iris(R) Plus Graphics 655
-Vendor,                                 Intel(R) Corporation
-Subdevices,                             0
-PCI Bus,                                0000:00:20.0
-PCI Generation,                         unknown
-PCI Max Brandwidth(GB/s),               unknown
-PCI Width,                              unknown
-Level Zero GPU Driver Version,          1.1.20043
-Current Frequency(MHz),                 300
-Changeable Frequency,                   Yes
-Max Core Frequency(MHz),                1200
-Min Core Frequency(MHz),                300
+Max Memory Allocation Size(MB),         62244.0
+Max Total Group Size,                   1024
+Max Group Size X,                       1024
+Max Group Size Y,                       1024
+Max Group Size Z,                       1024
+Max Group Count X,                      4294967295
+Max Group Count Y,                      4294967295
+Max Group Count Z,                      4294967295
+Max Shared Local Memory(KB),            128.0
+Subgroup Sizes Supported,               16;32
+SPIR-V Version Supported,               1.3
+Device Module Flags,                    fp16;fp64;int64_atomics;dp4a
+FP16 Denormals,                         yes
+FP16 Infinity And NaN,                  yes
+FP16 Round To Nearest Even,             yes
 ...
 ```
 
 ## Supported OS
 - Linux
+
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
 
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)

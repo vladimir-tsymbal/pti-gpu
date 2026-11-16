@@ -1,13 +1,13 @@
 # GEN Symbols Decoding
 ## Overview
-This chapter describes the way of decodig symbol information that comes from [Intel(R) Processor Graphics Compiler (IGC)](https://github.com/intel/intel-graphics-compiler) and is stored in a special IGC internal format with ELF/DWARF sections inside.
+This chapter describes the way of decoding symbol information that comes from [Intel(R) Processor Graphics Compiler (IGC)](https://github.com/intel/intel-graphics-compiler) and is stored in a special IGC internal format with ELF/DWARF sections inside.
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
-- Intel(R) Processor Graphics GEN9+
+- Not tested: compute-runtime 25.18 (Intel(R) Data Center GPU Max 1550) and 26.05 (Intel(R) Arc(TM) B570 Graphics) don't produce this format. There, the symbols of OpenCL(TM) programs and Level Zero modules are a zebin ELF64 file with standard DWARF sections; see [Level Zero](LevelZero.md#symbols-parsing) and [OpenCL(TM)](OpenCL.md#symbols-parsing) Symbols Parsing, and the [GPU ELF parser](../../utils/gpu_elf_parser) of this repository
 
 **Needed Headers**:
 - [program_debug_data.h](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/AdaptorOCL/ocl_igc_shared/executable_format/program_debug_data.h)

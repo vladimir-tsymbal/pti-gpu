@@ -7,76 +7,92 @@ The following options are supported:
 ```
 Usage: ./gpuinfo[.exe] <options>
 Options:
--l        Print list of available devices
--i        Print general device info
--m        Print list of available mertrics
--h        Print this help message
+--list [-l]      Print list of available devices
+--info [-i]      Print general device info (default)
+--metrics [-m]   Print list of available mertrics
+--help [-h]      Print this help message
+--version        Print this help message
 ```
 
 Expected output should be the following:
 * In case of printing the list of available GPU devices (`-l`):
     ```
-    Device 0: Intel(R) Iris(R) Plus Graphics 655 (CFL GT3)
+    Device 0:
+    -- Subdevice 0: /dev/dri/renderD128
     ```
 * In case of retrieving device information (`-i`) the following output is expected for all of the devices and subdevices:
     ```
     Device 0:
-    ---- Name: Intel(R) Iris(R) Plus Graphics 655 (CFL GT3)
-    ---- EuCoresTotalCount: 48
-    ---- EuCoresPerSubsliceCount: 8
-    ---- EuSubslicesTotalCount: 6
-    ---- EuSubslicesPerSliceCount: 3
-    ---- EuSlicesTotalCount: 2
-    ---- EuThreadsCount: 7
-    ---- SliceMask: 3
-    ---- SubsliceMask: 63
-    ---- SamplersTotalCount: 6
-    ---- GpuMinFrequencyMHz: 300
-    ---- GpuMaxFrequencyMHz: 1200
-    ---- GpuCurrentFrequencyMHz: 300
-    ---- PciDeviceId: 16037
-    ---- SkuRevisionId: 1
-    ---- PlatformIndex: 18
-    ---- ApertureSize: 0
-    ---- NumberOfRenderOutputUnits: 8
-    ---- NumberOfShadingUnits: 28
-    ---- OABufferMinSize: 16777216
-    ---- OABufferMaxSize: 16777216
-    ---- GpuTimestampFrequency: 12000000
-    ---- MaxTimestamp: 357913941250
+    -- Subdevice 0:
+    ---- Name: /dev/dri/renderD128
+    ---- GeometryPipeTotalCount: 5
+    ---- GtCopyEngine2: true
+    ---- GtCopyEngine1: true
+    ---- GtCopyEngine0: true
+    ---- GtCopyEngineMask: unknown
+    ---- GtSqidi4: true
+    ---- GtSqidi3: true
+    ---- GtSqidi2: true
+    ---- VectorEnginePerXeCoreCount: 8
+    ---- GtXeCore7: true
+    ---- GtXeCore5: true
+    ---- GtXeCore3: true
+    ---- GtL3Bank23: true
+    ---- VectorEngineThreadsCount: 8
+    ---- GpuTimestampFrequency: 19200000
+    ---- MediaOABufferMinSize: 131072
+    ---- GtXeCore2: true
+    ---- GtL3Node4: true
+    ---- GtSlice0: true
+    ---- GtXeCore1: true
+    ---- PciDeviceId: e20c
+    ---- OABufferMaxSize: 134217728
+    ...
     ```
 * In case of retrieving metrics information (`-m`) the following output is expected for all of the devices and subdevices:
     ```
     Device 0:
+    -- Subdevice 0:
     ---- Metric Group 0: OcclusionQueryStats
     ------ Metric Set 0: RenderedPixelsStats (Rendered Pixels Statistics)
     -------- Metric 0: OcclusionQueryStats / RenderedPixelsStats / PixelsRendered (Depth passed pixels) [UINT64]
     ------ Metric Set 1: RenderedFragmentsStats (Rendered Fragments Statistics)
     -------- Metric 0: OcclusionQueryStats / RenderedFragmentsStats / PixelsRendered (Depth passed fragments) [UINT64]
-    ...
+    ---- Metric Group 1: TimestampQuery
+    ------ Metric Set 0: GPUTimestamp (GPU Timestamp)
+    -------- Metric 0: TimestampQuery / GPUTimestamp / GpuDuration (GPU Duration) [UINT64]
     ---- Metric Group 2: PipelineStatistics
     ------ Metric Set 0: PipelineStats (Pipeline Statistics for OGL4)
     -------- Metric 0: PipelineStatistics / PipelineStats / IAVertices (Input vertices) [UINT64]
     -------- Metric 1: PipelineStatistics / PipelineStats / IAPrimitives (Input primitives) [UINT64]
-    ...
-    ---- Metric Group 3: OA
-    ------ Metric Set 0: RenderBasic (Render Metrics Basic Gen9)
-    -------- Metric 0: OA / RenderBasic / GpuTime (GPU Time Elapsed) [UINT64]
-    -------- Metric 1: OA / RenderBasic / GpuCoreClocks (GPU Core Clocks) [UINT64]
-    -------- Metric 2: OA / RenderBasic / AvgGpuCoreFrequencyMHz (AVG GPU Core Frequency) [UINT64]
-    ...
-    -------- Info 62: OA / RenderBasic / StreamMarker (Stream marker)
+    -------- Metric 2: PipelineStatistics / PipelineStats / VsInvocations (VS per vertex invocations) [UINT64]
+    -------- Metric 3: PipelineStatistics / PipelineStats / HsInvocations (HS invocations) [UINT64]
+    -------- Metric 4: PipelineStatistics / PipelineStats / DsInvocations (DS invocations) [UINT64]
+    -------- Metric 5: PipelineStatistics / PipelineStats / GsInvocations (GS per triangle invocations) [UINT64]
+    -------- Metric 6: PipelineStatistics / PipelineStats / GsPrimitives (Post-GS primitives) [UINT64]
+    -------- Metric 7: PipelineStatistics / PipelineStats / ClipperInvocations (Clipper invocations) [UINT64]
+    -------- Metric 8: PipelineStatistics / PipelineStats / ClipperPrimitives (Clipper primitives) [UINT64]
     ...
     ```
 ## Supported OS
 - Linux
 - Windows (*under development*)
 
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
+- Metrics (OA) collection: tested with both kernel drivers
+
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
+- [Python](https://www.python.org/) (version 3.9 and above)
 - [Intel(R) Metrics Discovery Application Programming Interface](https://github.com/intel/metrics-discovery)
+- On Linux one may need to enable metrics collection for non-root users:
+  ```sh
+  echo 0 | sudo tee /proc/sys/dev/i915/perf_stream_paranoid  # i915 kernel driver (e.g. PVC)
+  echo 0 | sudo tee /proc/sys/dev/xe/observation_paranoid    # xe kernel driver (e.g. BMG)
+  ```
 
 ## Build and Run
 ### Linux

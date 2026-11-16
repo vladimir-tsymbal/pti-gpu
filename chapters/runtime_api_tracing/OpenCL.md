@@ -2,7 +2,9 @@
 ## Overview
 OpenCL(TM) API tracing allows to intercept standard API calls by injecting user-defined callback to function enter and exit points, as well as to read and modify traced function arguments and return value.
 
-OpenCL(TM) runtimes for Intel(R) Processor Graphics, Intel(R) Core(TM) Processor and Intel(R) Xeon(R) CPU support special tracing extension functions that can be obtained by [`clGetExtensionFunctionAddressForPlatform`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetExtensionFunctionAddressForPlatform.html) call.
+OpenCL(TM) runtimes for Intel(R) Processor Graphics, Intel(R) Core(TM) Processor and Intel(R) Xeon(R) CPU support special tracing extension functions that can be obtained by [`clGetExtensionFunctionAddressForPlatform`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetExtensionFunctionAddressForPlatform.html) call.
+
+These functions are not listed in the device extension strings: look them up and check for `NULL`. The Intel(R) OpenCL(TM) runtimes for GPU (compute-runtime, checked with 25.18 and 26.05) and for CPU provide them.
 
 The following functions are exposed:
 
@@ -42,14 +44,15 @@ cl_int CL_API_CALL clGetTracingStateINTEL(
 
 **Supported Runtimes**:
 - [Intel(R) Graphics Compute Runtime for oneAPI Level Zero and OpenCL(TM) Driver](https://github.com/intel/compute-runtime)
-- [Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes](https://software.intel.com/en-us/articles/opencl-drivers#cpu-section)
+- [Intel(R) Xeon(R) Processor / Intel(R) Core(TM) Processor (CPU) Runtimes](https://www.intel.com/content/www/us/en/developer/articles/tool/opencl-drivers.html#cpu-section)
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Intel(R) Processor Graphics, Intel(R) Xeon(R) Processor and Intel(R) Core(TM) Processor
+- Tested on Intel(R) Data Center GPU Max 1550 (i915 driver), Intel(R) Arc(TM) B570 Graphics (xe driver), and the Intel(R) OpenCL(TM) CPU runtime of oneAPI 2026.2 on Intel(R) Xeon(R) and Intel(R) Core(TM) processors; other devices are not tested
 
 **Needed Headers**:
 - OpenCL(TM) [headers](https://github.com/KhronosGroup/OpenCL-Headers)
@@ -61,20 +64,24 @@ cl_int CL_API_CALL clGetTracingStateINTEL(
 
 ## How To Use
 1. Get a pointer to the function using
-[`clGetExtensionFunctionAddressForPlatform`](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/clGetExtensionFunctionAddressForPlatform.html)
+[`clGetExtensionFunctionAddressForPlatform`](https://registry.khronos.org/OpenCL/sdk/2.1/docs/man/xhtml/clGetExtensionFunctionAddressForPlatform.html)
 call, e.g.:
 ```cpp
 decltype(clCreateTracingHandleINTEL)* _clCreateTracingHandleINTEL =
   reinterpret_cast<decltype(clCreateTracingHandleINTEL)*>(
       clGetExtensionFunctionAddressForPlatform(
           platform, "clCreateTracingHandleINTEL"));
+if (_clCreateTracingHandleINTEL == nullptr) {
+  // The runtime doesn't provide the tracing extension
+}
 ```
+   The other functions (`clSetTracingPointINTEL`, `clEnableTracingINTEL`, `clDisableTracingINTEL`, `clDestroyTracingHandleINTEL`) are obtained the same way as `_clSetTracingPointINTEL`, `_clEnableTracingINTEL`, `_clDisableTracingINTEL` and `_clDestroyTracingHandleINTEL`.
 2. Define the function that will be called along with the traced API, e.g.:
 ```cpp
 void Callback(ClFunctionId fid,
               cl_callback_data* callback_data,
               void* user_data) {
-  std::count << "Function " << callback_data->functionName << " is called (" <<
+  std::cout << "Function " << callback_data->functionName << " is called (" <<
     (callback_data->site == CL_CALLBACK_SITE_ENTER ? "enter" : "exit") <<
     ")" << std::endl;
 }
@@ -82,7 +89,7 @@ void Callback(ClFunctionId fid,
 3. Create a tracing handle for the target device:
 ```cpp
   cl_tracing_handle handle = nullptr;
-  cl_int status = _clCreateTracingHandleINTEL(device, callback,
+  cl_int status = _clCreateTracingHandleINTEL(device, Callback,
                                               nullptr, &handle);
   assert(status == CL_SUCCESS);
 ```

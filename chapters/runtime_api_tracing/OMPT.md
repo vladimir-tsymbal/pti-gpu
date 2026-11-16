@@ -14,7 +14,7 @@ OpenMP* standard version 5.0+ has a special interface for first-party tools that
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Any
@@ -27,6 +27,8 @@ OpenMP* standard version 5.0+ has a special interface for first-party tools that
 ```cpp
 #include <omp-tools.h>
 
+// Must be exported with C linkage: the OpenMP runtime looks it up by name
+extern "C" __attribute__((visibility("default")))
 ompt_start_tool_result_t* ompt_start_tool(
   unsigned int omp_version, const char* runtime_version) {
   /* Start-up code here */
@@ -47,6 +49,7 @@ void Finalize(ompt_data_t* data) {
   delete result;
 }
 
+extern "C" __attribute__((visibility("default")))
 ompt_start_tool_result_t* ompt_start_tool(
     unsigned int omp_version, const char* runtime_version) {
   ompt_start_tool_result_t* result = new ompt_start_tool_result_t;

@@ -1,53 +1,106 @@
-level-zero-loader:
-  deb:
-  - https://github.com/oneapi-src/level-zero/releases/download/v1.7.15/level-zero_1.7.15+u18.04_amd64.deb
-  - https://github.com/oneapi-src/level-zero/releases/download/v1.7.15/level-zero-devel_1.7.15+u18.04_amd64.deb
-compute-runtime:
-  deb:
-  - https://github.com/intel/compute-runtime/releases/download/22.10.22597/intel-gmmlib_22.0.2_amd64.deb
-  - https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.10409/intel-igc-core_1.0.10409_amd64.deb
-  - https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.10409/intel-igc-opencl_1.0.10409_amd64.deb
-  - https://github.com/intel/compute-runtime/releases/download/22.10.22597/intel-opencl-icd_22.10.22597_amd64.deb
-  - https://github.com/intel/compute-runtime/releases/download/22.10.22597/intel-level-zero-gpu_1.3.22597_amd64.deb
-metrics-discovery:
+# Validated software configurations (Linux). Each component key ends with the
+# configuration it was tested on; keys without a suffix apply to both.
+#   i915-pvc: Intel Data Center GPU Max 1550 (Xe-HPC), Ubuntu 24.04, kernel 6.8,
+#             i915 out-of-tree DKMS driver
+#   xe-bmg:   Intel Arc B570 (Xe2, BMG G21), Ubuntu 26.04, kernel 7.0,
+#             in-tree xe driver
+# Other GPUs, distributions and driver versions are not tested.
+#
+# Headers that the build fetches by itself (pinned in build_utils/get_*.py):
+#   Level Zero v1.29.0 (only when no level_zero/ze_api.h is found),
+#   OpenCL-Headers v2026.05.29, compute-runtime 26.44.40734.8, gmmlib 22.10.2,
+#   IGC/IGA v2.43.9, metrics-discovery 1.14.182, ITT v3.28.4.
+i915-driver-i915-pvc:
+  apt:
+    # Fails to build on Ubuntu kernel 6.8.0-147 without a source patch
+    # (pci_resize_resource() API change). OA metrics were validated with
+    # intel-i915-dkms 1.25.2.13 on kernel 6.8.0-60.
+    apt_key: https://repositories.intel.com/gpu/intel-graphics.key
+    apt_repo: deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble/lts/2523 unified
+    apt_source: /etc/apt/sources.list.d/intel-gpu-noble.list
+    packages:
+    - intel-i915-dkms=1.25.2.57.250224.65+i75-1
+level-zero-loader-i915-pvc:
+  apt:
+    apt_key: https://repositories.intel.com/gpu/intel-graphics.key
+    apt_repo: deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble/lts/2523 unified
+    apt_source: /etc/apt/sources.list.d/intel-gpu-noble.list
+    packages:
+    - libze1=1.24.0.0-1146~24.04
+    - libze-dev=1.24.0.0-1146~24.04
+compute-runtime-i915-pvc:
+  apt:
+    apt_key: https://repositories.intel.com/gpu/intel-graphics.key
+    apt_repo: deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble/lts/2523 unified
+    apt_source: /etc/apt/sources.list.d/intel-gpu-noble.list
+    packages:
+    - intel-opencl-icd=25.18.33578.77-1146~24.04
+    - libze-intel-gpu1=25.18.33578.77-1146~24.04
+    - libigc2=2.11.43-1146~24.04
+    - libigdgmm12=22.7.2-1146~24.04
+metrics-discovery-i915-pvc:
+  apt:
+    apt_key: https://repositories.intel.com/gpu/intel-graphics.key
+    apt_repo: deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble/lts/2523 unified
+    apt_source: /etc/apt/sources.list.d/intel-gpu-noble.list
+    packages:
+    - intel-metrics-discovery=1.14.180-1146~24.04
+    - intel-metrics-discovery-dev=1.14.180-1146~24.04
+    - intel-metrics-library=1.0.196-1146~24.04
+level-zero-loader-xe-bmg:
+  apt:
+    # Ubuntu 26.04 universe
+    packages:
+    - libze1=1.28.2-2
+    - libze-dev=1.28.2-2
+compute-runtime-xe-bmg:
+  apt:
+    # Ubuntu 26.04 universe
+    packages:
+    - intel-opencl-icd=26.05.37020.3-1
+    - libze-intel-gpu1=26.05.37020.3-1
+    - libigc2=2.28.4-4
+    - libigdgmm12=22.9.0+ds1-1
+metrics-discovery-xe-bmg:
   github:
-    build_path: build
-    commands:
-    - cmake ..
-    - make -j$(nproc)
-    - sudo make install
-    - sudo make package
-    - sudo dpkg -i *.deb
-    commit: 16ceed40246d9638fde27e384d8a8681337d9828
-    url: https://github.com/intel/metrics-discovery
-metrics-library:
-  github:
+    # Not packaged for Ubuntu 26.04
     build_path: null
     commands:
-    - cmake .
-    - make -j$(nproc)
-    - sudo make package
-    - sudo dpkg -i *.deb
-    commit: 3fd6eb0544fadcec2ac762aedee7c2d5d6479feb
+    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    - cmake --build build -j$(nproc)
+    - sudo cmake --install build
+    commit: bd0a8f79afcc421833114f8cc895ff81b0629036  # tag 1.16.199
+    url: https://github.com/intel/metrics-discovery
+metrics-library-xe-bmg:
+  github:
+    # Not packaged for Ubuntu 26.04
+    build_path: null
+    commands:
+    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    - cmake --build build -j$(nproc)
+    - sudo cmake --install build
+    commit: 1b83c3ae7fc9e8442a1da06b8e8f955c5a9b4d60  # tag 1.0.249
     url: https://github.com/intel/metrics-library
 gtpin:
   archive:
+    # The instcount and memaccess builds download this archive themselves
+    # (or use -DGTPIN_PATH=<dir>/Profilers on offline hosts).
     commands:
     - tar -xf {} -C {}
     install_path: ~/
-    url: https://downloadmirror.intel.com/686383/external-gtpin-2.19-linux.tar.xz
-oneapit-toolkits:
-  apt:
-    apt_key: https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-    apt_repo: deb https://apt.repos.intel.com/oneapi all main
-    apt_source: /etc/apt/sources.list.d/oneAPI.list
-    packages:
-    - intel-basekit=2022.1.1-119
+    url: https://downloadmirror.intel.com/924057/external-release-gtpin-5.0.0-linux.tar.xz
+oneapi-toolkit:
+  archive:
+    # Intel oneAPI Toolkit 2026.2 offline installer (DPC++/C++ compiler 2026.2.0).
+    # The OA metrics on i915 were also validated with oneAPI 2025.3.
+    commands:
+    - sudo sh {} -a --silent --eula accept
+    install_path: /opt/intel/oneapi
+    url: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/902d3dfc-ece4-4282-9a4a-48020ca454e6/intel-oneapi-toolkit-2026.2.0.667_offline.sh
 finalize:
   config:
     commands:
     - echo "source /opt/intel/oneapi/setvars.sh" >> ~/.bashrc
-    - '[ ! -d "/sys/module/i915/parameters" ] && sudo mkdir -p /sys/module/i915/parameters'
-    - '[ ! -d "/proc/sys/dev/i915" ] && sudo mkdir -p /proc/sys/dev/i915'
-    - sudo echo N > /sys/module/i915/parameters/enable_hangcheck
-    - sudo echo 0 > /proc/sys/dev/i915/perf_stream_paranoid
+    # Metrics (OA) collection as a non-root user; both reset to 1 on reboot.
+    - '[ -e /proc/sys/dev/i915/perf_stream_paranoid ] && echo 0 | sudo tee /proc/sys/dev/i915/perf_stream_paranoid'
+    - '[ -e /proc/sys/dev/xe/observation_paranoid ] && echo 0 | sudo tee /proc/sys/dev/xe/observation_paranoid'

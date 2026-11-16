@@ -11,24 +11,24 @@ To make these time points available one should use `sycl::queue` object with ena
 
 **Supported OS**:
 - Linux
-- Windows
+- Windows (not validated)
 
 **Supported HW**:
 - Any
 
 **Needed Headers**:
-- Standard SYCL/DPC++ [headers](https://github.com/intel/llvm/tree/sycl/sycl/include/CL)
+- Standard SYCL/DPC++ [headers](https://github.com/intel/llvm/tree/sycl/sycl/include/sycl)
 
 **Needed Libraries**:
 - Standard SYCL/DPC++ [runtime](https://github.com/intel/llvm)
 
 ## How To Use
-1. Create a queue with enabled profling mode:
+1. Create a queue with enabled profiling mode:
 ```cpp
-#include <CL/sycl.hpp> // SYCL header
+#include <sycl/sycl.hpp> // SYCL header
 ...
 sycl::property_list prop_list{sycl::property::queue::enable_profiling()};
-sycl::queue queue(sycl::gpu_selector{}, prop_list);
+sycl::queue queue(sycl::gpu_selector_v, prop_list);
 ```
 2. Use this queue to submit a kernel, return an event:
 ```cpp
@@ -57,7 +57,7 @@ std::cout << "Kernel execution time: " << duration << " sec" << std::endl;
 ```
 
 ## Usage Details
-- refer to the [SYCL 2020 standard](https://www.khronos.org/registry/SYCL/specs/sycl-2020/pdf/sycl-2020.pdf) to learn more on events and profiling queues.
+- refer to the [SYCL 2020 standard](https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html) to learn more on events and profiling queues.
 
 ## Samples
 - [DPC++ GEMM](../../samples/dpc_gemm)

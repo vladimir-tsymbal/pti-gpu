@@ -6,23 +6,25 @@ As a result, table like the following will be printed.
 ```
 === OpenMP Timing Results: ===
 
-Total Execution Time (ns): 3243751492
-Total Region Time (ns): 186811670
+Total Execution Time (ns): 115239664
+Total Region Time (ns): 22040135
 
            Region ID,         Region Type,       Calls, Transferred (bytes),           Time (ns),  Time (%),        Average (ns),            Min (ns),            Max (ns)
-             4203121,              Target,           4,                   0,           180761706,     96.76,            45190426,            44939097,            45505303
-             4203122,    TransferToDevice,           8,            33554432,             4119470,      2.21,              514933,              364952,              628467
-             4203123,  TransferFromDevice,           4,            16777216,             1930494,      1.03,              482623,              478523,              484546
+             4205481,              Target,           4,                   0,            22040135,    100.00,             5510033,             5302608,             5868359
 ```
 ## Supported OS
 - Linux
 - Windows (*under development*)
 
+## Tested Configurations
+- Devices: Intel(R) Data Center GPU Max 1550 (i915 kernel driver) and Intel(R) Arc(TM) B570 Graphics (xe kernel driver); on the host CPU; other devices are not tested
+- Software: the versions listed in [SOFTWARE](../../SOFTWARE)
+
 ## Prerequisites
 - [CMake](https://cmake.org/) (version 3.22 and above)
 - [Git](https://git-scm.com/) (version 1.8 and above)
-- [Python](https://www.python.org/) (version 2.7 and above)
-- [Intel(R) oneAPI Base Toolkit](https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit.html)
+- [Python](https://www.python.org/) (version 3.9 and above)
+- [Intel(R) oneAPI Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/oneapi-toolkit.html) (Intel(R) oneAPI DPC++/C++ Compiler, `icpx`)
 
 ## Build and Run
 ### Linux
